@@ -1,21 +1,38 @@
-# Backend Bootstrap Stack
+# Bootstrap Stack — S3 State Bucket + DynamoDB Lock Table
 
-This stack creates the AWS resources required for an S3 Terraform backend:
+## Starting point and purpose
 
-- S3 bucket for state storage.
-- S3 versioning for recovery.
-- Server-side encryption.
-- Public access block.
-- Bucket owner enforced object ownership.
-- DynamoDB table for state locking.
+This is the **first root** in the Module 4 project. It creates the AWS infrastructure that other Terraform stacks use for remote state: an S3 bucket and a DynamoDB lock table.
 
-## Why this stack uses local state
+It intentionally uses **local state** (chicken-and-egg: the backend must exist before the app stack can reference it).
 
-The backend bucket must exist before another Terraform configuration can use it.
-Run this bootstrap stack first with local state. In production, keep this state
-file in a secure location or migrate it into a separate administrative backend.
+---
 
-## Commands
+## File index
+
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Terraform `>= 1.5.0`; AWS and random providers. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | Region, name prefix, environment, `force_destroy_state_bucket`, tags. |
+| `main.tf` | S3 state bucket, DynamoDB lock table, encryption, versioning, public access block. |
+| `outputs.tf` | Bucket name, lock table name, region, example backend init command. |
+| `README.md` | This file. |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **State storage** | `main.tf` | `aws_s3_bucket.terraform_state` |
+| **Bucket hardening** | `main.tf` | Versioning, SSE, public access block, ownership controls |
+| **State locking** | `main.tf` | `aws_dynamodb_table.terraform_locks` |
+| **Unique naming** | `main.tf` | `random_id.suffix` + account ID |
+
+---
+
+## Run
 
 ```bash
 terraform init
@@ -24,16 +41,17 @@ terraform apply tfplan
 terraform output
 ```
 
-Copy the values from `state_bucket_name`, `lock_table_name`, and
-`backend_region` into the app stack's `terraform init -backend-config` command.
+Save the outputs — you need them to initialize the `app/` stack.
+
+---
 
 ## Cleanup
 
-State buckets often contain versioned objects and should not be destroyed in real
-accounts. For lab accounts only, you can set:
+Destroy the app stack first, then:
 
 ```bash
 terraform apply -var="force_destroy_state_bucket=true"
-terraform destroy -var="force_destroy_state_bucket=true"
+terraform destroy
 ```
 
+Without `force_destroy_state_bucket=true`, the versioned state bucket cannot be emptied.

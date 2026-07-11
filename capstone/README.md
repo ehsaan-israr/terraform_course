@@ -1,6 +1,14 @@
 # Final Capstone: Production AWS Platform with Terraform
 
-You will design and scaffold a production-ready platform using Terraform modules, remote state, multi-environment roots, CI/CD, security scanning, cost awareness, monitoring, backup, and disaster recovery documentation.
+## Starting point and purpose
+
+This is the **final course project** — a production-oriented AWS platform scaffolded entirely with Terraform. You compose nine reusable modules into three environment roots (dev, staging, prod), each with its own remote state, CI/CD workflows, security scanning, and operational documentation.
+
+**What you build:** CloudFront + WAF → ALB → ECS Fargate → RDS / Redis / S3, with Route53, Secrets Manager, KMS, and CloudWatch monitoring.
+
+**Learning goals:** module composition, multi-environment isolation, containerized workloads on Fargate, production readiness documentation, and CI-driven plan/apply.
+
+---
 
 ## Target architecture
 
@@ -73,6 +81,100 @@ capstone/
     plan-apply.yml
     security-scan.yml
 ```
+
+---
+
+## Complete file index
+
+### Project root
+
+| File | Purpose |
+|------|---------|
+| `README.md` | This file — architecture, file index, apply guide, acceptance checklist. |
+
+### Documentation (`docs/`)
+
+| File | Purpose |
+|------|---------|
+| `docs/ARCHITECTURE.md` | Request flow, module responsibilities, security patterns, cost notes, backup/DR concepts. |
+| `docs/RUNBOOK.md` | Daily checks, deployment steps, incident response, break-glass guidance. |
+| `docs/PRODUCTION_CHECKLIST.md` | Readiness checks for workflow, security, reliability, backup/DR, cost, documentation. |
+
+### CI/CD (`.github/workflows/`)
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/plan-apply.yml` | PR: fmt, init, validate, plan for dev/staging/prod; manual `workflow_dispatch` apply. |
+| `.github/workflows/security-scan.yml` | Trivy IaC scan (HIGH/CRITICAL); optional Infracost PR comment on dev. |
+
+### Environment roots (`environments/{dev,staging,prod}/`)
+
+Each environment has the same six files:
+
+| File | Purpose |
+|------|---------|
+| `main.tf` | Provider, locals, and module composition (env-specific sizing). |
+| `variables.tf` | Inputs: region, project, secrets, DNS, alarms, app env vars. |
+| `outputs.tf` | Exposes CloudFront, ALB, RDS, Redis, S3, SNS outputs. |
+| `versions.tf` | Terraform `>= 1.5.0`, AWS provider `~> 5.0`, S3 backend block. |
+| `backend.hcl` | Remote state config (bucket, key, region, DynamoDB lock table, encryption). |
+| `terraform.tfvars.example` | Example variable values per environment. |
+
+### Modules (`modules/<name>/`)
+
+Each module has three files:
+
+| Module | `main.tf` | `variables.tf` | `outputs.tf` |
+|--------|-----------|----------------|--------------|
+| `networking/` | VPC, subnets, IGW, NAT, route tables | CIDR, NAT flag, tags | VPC ID, subnet IDs |
+| `security/` | KMS key, Secrets Manager secrets, WAFv2 web ACL | WAF scope, secret names, tags | KMS ARN, WAF ARN, secret ARNs |
+| `storage/` | Private S3 bucket with versioning, encryption, PAB | `force_destroy`, tags | Bucket name/ARN |
+| `compute-ecs/` | ECS cluster, ALB, target group, listener, IAM roles, Fargate task/service, SGs, log group | Image, port, CPU/memory, desired count, secrets | ALB DNS, SG IDs, cluster/service names |
+| `database/` | RDS PostgreSQL, DB subnet group, DB security group | Instance class, Multi-AZ, backups, deletion protection | Endpoint, port, SG ID |
+| `cache/` | ElastiCache Redis replication group, subnet group, Redis SG | Node count, auth token | Primary endpoint, SG ID |
+| `cdn/` | CloudFront distribution in front of ALB with WAF | Origin DNS, cert ARN, domain | Distribution ID, domain name |
+| `dns/` | Route53 records (conditional on zone ID) | Zone ID, domain, CloudFront domain | Record FQDNs |
+| `monitoring/` | SNS topic, email subscription, CloudWatch alarms, dashboard | Alarm thresholds, email | Alerts topic ARN, dashboard name |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files |
+|---------|-------------------|
+| **Networking** | `modules/networking/*`; env `main.tf` (VPC CIDR, NAT) |
+| **Compute (ECS + ALB)** | `modules/compute-ecs/*`; env `main.tf` (desired count, CPU/memory, image) |
+| **Storage (S3)** | `modules/storage/*`; env `main.tf` (`force_destroy`); `ASSET_BUCKET` env var in compute |
+| **Database (RDS)** | `modules/database/*`; env `main.tf` (instance class, Multi-AZ, backups) |
+| **Cache (Redis)** | `modules/cache/*`; env `main.tf` (node count, auth token) |
+| **CDN (CloudFront)** | `modules/cdn/*`; env `main.tf` (origin = ALB, cert, WAF) |
+| **DNS (Route53)** | `modules/dns/*`; env `main.tf` (`route53_zone_id`, `domain_name`) |
+| **Security (KMS, secrets, WAF)** | `modules/security/*`; compute SG rules; DB/cache SG ingress from ECS |
+| **Monitoring** | `modules/monitoring/*`; compute Container Insights + log group |
+| **CI/CD** | `.github/workflows/plan-apply.yml`, `security-scan.yml` |
+| **Backup / DR** | RDS backup settings in env `main.tf`; S3 versioning in storage; `docs/ARCHITECTURE.md` |
+| **Operations** | `docs/RUNBOOK.md`, `docs/PRODUCTION_CHECKLIST.md` |
+
+### Module dependency graph
+
+All dependencies flow through environment `main.tf` — modules do not call each other directly.
+
+```text
+networking, security, storage  (parallel, no cross-deps)
+        |
+        v
+     compute  (needs networking + security + storage)
+        |
+        +-- database, cache, cdn  (parallel; need compute and/or networking)
+        |
+        v
+       dns  (needs cdn)
+        |
+        v
+   monitoring  (needs compute)
+```
+
+---
 
 ## Module-by-module walkthrough
 
