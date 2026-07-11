@@ -1,0 +1,17 @@
+aws_region      = "us-east-1"
+project         = "capstone-platform"
+environment     = "dev"
+container_image = "public.ecr.aws/nginx/nginx:latest"
+
+# Replace before use. Prefer secret injection from CI or a secrets manager.
+database_password = "change-me-in-ci"
+redis_auth_token  = null
+
+route53_zone_id = ""
+domain_name     = ""
+certificate_arn = ""
+alarm_email     = ""
+
+app_environment_variables = {
+  LOG_LEVEL = "info"
+}

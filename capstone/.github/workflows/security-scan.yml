@@ -1,0 +1,33 @@
+name: terraform-security-scan
+
+on:
+  pull_request:
+    paths:
+      - "capstone/**"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy IaC scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: capstone
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+      - name: Optional Infracost estimate
+        if: ${{ secrets.INFRACOST_API_KEY != '' }}
+        uses: infracost/actions/comment@v1
+        with:
+          path: capstone/environments/dev
+          behavior: update
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
