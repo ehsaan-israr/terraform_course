@@ -1,0 +1,34 @@
+name: infracost-comment
+
+on:
+  pull_request:
+    paths:
+      - "modules/11-ecosystem/project/**"
+
+jobs:
+  infracost:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Infracost
+        uses: infracost/actions/setup@v3
+      - name: Generate cost estimate
+        run: |
+          infracost breakdown \
+            --path modules/11-ecosystem/project/terragrunt/env/dev \
+            --format json \
+            --out-file /tmp/infracost.json
+      - name: Comment cost estimate
+        run: |
+          infracost comment github \
+            --path /tmp/infracost.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --github-token "$GITHUB_TOKEN" \
+            --pull-request "$PR_NUMBER" \
+            --behavior update
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

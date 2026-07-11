@@ -1,0 +1,18 @@
+version: 3
+projects:
+  - name: ecosystem-dev
+    dir: terragrunt/env/dev
+    workflow: terragrunt
+    autoplan:
+      enabled: true
+      when_modified:
+        - "*.hcl"
+        - "../../modules/**/*.tf"
+workflows:
+  terragrunt:
+    plan:
+      steps:
+        - run: terragrunt plan -input=false -out=$PLANFILE
+    apply:
+      steps:
+        - run: terragrunt apply -input=false $PLANFILE
