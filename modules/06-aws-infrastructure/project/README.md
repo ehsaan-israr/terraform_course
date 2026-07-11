@@ -1,114 +1,96 @@
-# Module 06 Project - AWS Platform Skeleton
+# Module 6 Project — Production-Style AWS Platform Skeleton
 
-This project is a cohesive single-root Terraform example for a small production
-platform. It is intentionally readable: resources are split by concern instead
-of hidden behind modules.
+## Starting point and purpose
 
-## Files
+This project assembles a **cohesive production-style platform** in a single root module, split by concern (one file per domain rather than child modules). It demonstrates how real teams organize large Terraform roots before extracting modules.
 
-```text
-versions.tf    Provider and Terraform version constraints
-providers.tf   AWS provider configuration
-variables.tf   Inputs and cost-sensitive defaults
-network.tf     VPC, subnets, route tables, optional NAT
-security.tf    Security groups and IAM roles
-compute.tf     ALB, ECS cluster, task definition, service
-database.tf    Private encrypted RDS PostgreSQL
-storage.tf     Private encrypted versioned S3 bucket
-monitoring.tf  CloudWatch log group and example alarms
-outputs.tf     Values useful after apply
-```
+**What you build:**
+
+- VPC with public/private subnets and optional NAT gateway.
+- Tiered security groups and IAM roles for ECS.
+- Application Load Balancer → ECS Fargate service.
+- Private RDS PostgreSQL and encrypted S3 bucket.
+- CloudWatch log group and metric alarms.
+
+**Learning goals:** file-per-concern layout, ALB→ECS→RDS traffic flow, IAM task roles, and production monitoring primitives.
+
+---
 
 ## Architecture
 
 ```text
 Internet
    |
-   v
-+-------------------------+
-| Public ALB              |
-| public subnets          |
-+-----------+-------------+
-            |
-            v
-+-------------------------+          +-----------------------+
-| ECS Fargate service     | -------> | CloudWatch log group  |
-| private subnets         |          +-----------------------+
-+-----------+-------------+
-            |
-            +-------------> S3 app bucket
-            |
-            +-------------> Private RDS PostgreSQL
-
-Security:
-ALB SG -> App SG -> Database SG
-ECS task role -> least-privilege S3 access
+ALB (public subnets)
+   |
+ECS Fargate tasks (private subnets)
+   |
+   +-- RDS PostgreSQL (private, port 5432)
+   +-- S3 (via task IAM role)
 ```
 
-## Cost warning
+---
 
-This project can create billable resources:
+## File index
 
-- Application Load Balancer.
-- ECS Fargate tasks.
-- RDS instance and storage.
-- NAT gateway if `enable_nat_gateway = true`.
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Terraform `>= 1.5.0`; AWS and random providers. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | VPC CIDRs, subnets, NAT flag, app port, container image, ECS count, DB settings. |
+| `network.tf` | Locals, VPC, subnets, IGW, route tables, optional NAT gateway. |
+| `security.tf` | ALB/app/database security groups; ECS execution + task IAM roles; S3 access policy. |
+| `compute.tf` | ALB, target group, listener, ECS cluster, task definition, service. |
+| `database.tf` | Random DB password, subnet group, RDS PostgreSQL instance. |
+| `storage.tf` | Private encrypted versioned S3 bucket with lifecycle rule. |
+| `monitoring.tf` | CloudWatch log group, ALB 5xx alarm, ECS CPU alarm. |
+| `outputs.tf` | VPC/subnet IDs, ALB DNS, ECS names, bucket, DB endpoint, password warning. |
+| `README.md` | This file. |
 
-Use a sandbox account and destroy resources when finished.
+---
 
-## Important networking note
+## Feature → file mapping
 
-The ECS service runs in private subnets. To actually run tasks that pull images
-and publish logs, private subnets need egress through either:
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Networking** | `network.tf` | VPC, subnets, IGW, route tables, optional NAT |
+| **Security / IAM** | `security.tf` | Security groups, ECS execution/task roles, S3 policy |
+| **Compute (ALB + ECS)** | `compute.tf` | ALB, target group, listener, ECS cluster/service/task |
+| **Database** | `database.tf` | RDS PostgreSQL, DB subnet group |
+| **Storage** | `storage.tf` | S3 bucket with encryption, versioning, lifecycle |
+| **Monitoring** | `monitoring.tf`, `compute.tf` | Log group, ALB 5xx alarm, ECS CPU alarm |
+| **Configuration** | `variables.tf`, `network.tf` (locals) | Inputs and shared locals |
 
-- `enable_nat_gateway = true`, or
-- VPC endpoints for ECR, CloudWatch Logs, S3, and related services.
+**Traffic path:** Internet → ALB (public) → ECS tasks (private) → RDS (5432) / S3 (task role)
 
-The default leaves NAT disabled to avoid surprise hourly cost. The plan is still
-useful for studying resource relationships.
+---
 
-## Commands
+## Run
 
 ```bash
 terraform init
 terraform fmt -recursive
 terraform validate
 terraform plan
-```
-
-Apply only after reviewing cost:
-
-```bash
-terraform apply
-```
-
-Destroy when finished:
-
-```bash
+terraform apply    # Review cost: ALB, Fargate, RDS; NAT if enabled
+terraform output alb_dns_name
 terraform destroy
 ```
 
-## Production hardening checklist
+Default `enable_nat_gateway = false`. ECS tasks in private subnets need NAT or VPC endpoints to pull images and write logs. Set `enable_nat_gateway = true` for working egress (adds hourly cost).
 
-- Add HTTPS listener with ACM certificate.
-- Redirect HTTP to HTTPS.
-- Use one NAT gateway per AZ or VPC endpoints.
-- Use immutable container image tags.
-- Store database credentials in Secrets Manager.
-- Enable RDS deletion protection and final snapshots.
-- Add ECS autoscaling.
-- Add WAF for internet-facing applications.
-- Encrypt CloudWatch logs with a customer-managed KMS key if required.
-- Send alarms to SNS, PagerDuty, or an incident platform.
-- Add CloudTrail and AWS Config at the account/organization layer.
+---
 
-## Study prompts
+## Hardening checklist
 
-1. Trace traffic from the ALB to ECS to RDS.
-2. Explain why the RDS instance is not publicly accessible.
-3. Identify which IAM role is used by ECS itself and which role application code
-   assumes.
-4. Explain why the generated DB password still requires secure state storage.
-5. Change `enable_nat_gateway` to `true` and review the additional route and NAT
-   resources.
+- [ ] Enable NAT or VPC endpoints for private subnet egress.
+- [ ] Move DB password to Secrets Manager.
+- [ ] Add HTTPS listener and ACM certificate on ALB.
+- [ ] Enable RDS deletion protection in non-lab environments.
+- [ ] Add ECS deployment circuit breaker and autoscaling.
 
+---
+
+## Cost warning
+
+Creates billable resources: ALB, Fargate tasks, RDS, optional NAT gateway. Use a sandbox account.

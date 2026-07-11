@@ -1,17 +1,41 @@
 # Logging Account
 
-Central log archive: CloudTrail, VPC Flow Logs, ALB/WAF logs, S3 access logs, retention controls, and immutable storage.
+## Starting point and purpose
 
-## What lives here
+This is the **central log archive account** root module. It stores immutable audit logs and organization-wide CloudTrail events.
 
-- Account-scoped root module composition.
-- Provider configuration that assumes a deployment role into this account.
-- Account-specific resources and calls to shared modules.
-- Outputs consumed by neighboring accounts only through explicit remote state or published parameters.
+---
 
-## Operating guidance
+## File index
 
-- Keep this root small and readable.
-- Do not place unrelated account resources here.
-- Require pull request review for all changes.
-- Run plans with credentials scoped to this account.
+| File | Purpose |
+|------|---------|
+| `main.tf` | Log archive S3 bucket, organization CloudTrail. |
+| `providers.tf` | Cross-account `assume_role` provider with default tags. |
+| `variables.tf` | Account ID, region, role name, name prefix. |
+| `versions.tf` | Terraform/AWS provider constraints. |
+| `outputs.tf` | Log bucket name, CloudTrail ARN. |
+| `README.md` | This file. |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Immutable log archive** | `main.tf` | S3 bucket + encryption + PAB + versioning |
+| **Organization audit trail** | `main.tf` | `aws_cloudtrail.organization` |
+| **Cross-account deploy** | `providers.tf` | `assume_role` into logging account |
+
+---
+
+## Run
+
+```bash
+terraform init
+terraform plan \
+  -var='account_id=444444444444' \
+  -var='name_prefix=acme-logging'
+```
+
+Apply first or alongside the security account — audit logging should be in place before workloads.

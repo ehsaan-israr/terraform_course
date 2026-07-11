@@ -1,47 +1,90 @@
-# Module 04 Project - Remote State Backend
+# Module 4 Project — Remote State with S3 and DynamoDB
 
-This project teaches the standard AWS remote-state pattern:
+## Starting point and purpose
 
-```text
-project/
-  bootstrap/  -> creates S3 state bucket and DynamoDB lock table
-  app/        -> stores its Terraform state in that remote backend
-```
+This project teaches the standard **S3 + DynamoDB remote state** pattern used by production Terraform teams. It has **two independent Terraform roots**:
+
+1. **`bootstrap/`** — Creates the state bucket and lock table (uses local state).
+2. **`app/`** — A sample application stack that stores its state in the bootstrap backend.
+
+The app stack itself is intentionally minimal (one private S3 artifact bucket). The learning goal is the **backend workflow**, not the application resources.
+
+---
 
 ## Architecture
 
 ```text
-+--------------------+       creates        +-----------------------------+
-| bootstrap Terraform| -------------------> | S3 bucket for tfstate       |
-| local state        |                      | DynamoDB table for locking  |
-+--------------------+                      +-----------------------------+
-                                                        ^
-                                                        |
-                                                        | backend "s3"
-                                                        |
-                                             +-----------------------------+
-                                             | app Terraform configuration |
-                                             | remote state + locking      |
-                                             +-----------------------------+
+bootstrap/ (local state)
+   |
+   +-- S3 bucket (versioned, encrypted, private)
+   +-- DynamoDB table (state locking)
+          |
+          v
+app/ (remote state in S3)
+   |
+   +-- S3 artifact bucket (sample application resource)
 ```
 
-## Step 1: Run the bootstrap stack
+---
+
+## File index
+
+### Project root
+
+| File | Purpose |
+|------|---------|
+| `README.md` | This file — overall workflow and architecture. |
+
+### `bootstrap/` — Backend infrastructure
+
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Terraform `>= 1.5.0`; AWS and random providers. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | Region, name prefix, environment, force-destroy flag, tags. |
+| `main.tf` | S3 state bucket + DynamoDB lock table with hardening. |
+| `outputs.tf` | Bucket name, lock table name, region, example `terraform init` command. |
+| `README.md` | Bootstrap-specific setup, commands, and cleanup guidance. |
+
+### `app/` — Application stack with remote backend
+
+| File | Purpose |
+|------|---------|
+| `backend.tf` | Partial S3 backend config (values supplied at `init`). |
+| `versions.tf` | Terraform `>= 1.5.0`, AWS provider. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | Region, name prefix, environment, tags. |
+| `main.tf` | Sample `aws_s3_bucket.app_artifacts` with encryption and versioning. |
+| `outputs.tf` | Artifact bucket name and ARN. |
+| `README.md` | App-specific init commands and state migration notes. |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **State storage (S3)** | `bootstrap/main.tf` | `aws_s3_bucket.terraform_state` + versioning, encryption, PAB |
+| **State locking (DynamoDB)** | `bootstrap/main.tf` | `aws_dynamodb_table.terraform_locks` |
+| **Unique bucket naming** | `bootstrap/main.tf` | `random_id.suffix`, account ID in bucket name |
+| **Remote backend config** | `app/backend.tf` | S3 backend block (partial — values at init) |
+| **App artifacts storage** | `app/main.tf` | `aws_s3_bucket.app_artifacts` + hardening |
+
+---
+
+## Run order
+
+### Step 1 — Bootstrap (local state)
 
 ```bash
 cd bootstrap
 terraform init
 terraform plan -out=tfplan
 terraform apply tfplan
-terraform output
+terraform output   # Save state_bucket_name, lock_table_name, backend_region
 ```
 
-Save these outputs:
-
-- `state_bucket_name`
-- `lock_table_name`
-- `backend_region`
-
-## Step 2: Initialize the app backend
+### Step 2 — App (remote state)
 
 ```bash
 cd ../app
@@ -51,68 +94,33 @@ terraform init \
   -backend-config="region=<backend_region>" \
   -backend-config="dynamodb_table=<lock_table_name>" \
   -backend-config="encrypt=true"
-```
-
-The `key` is the object path inside the S3 bucket. In production, use a naming
-scheme that includes application and environment, such as:
-
-```text
-network/prod/terraform.tfstate
-payments/staging/terraform.tfstate
-observability/dev/terraform.tfstate
-```
-
-## Step 3: Apply the app
-
-```bash
 terraform plan -out=tfplan
 terraform apply tfplan
-```
-
-Run a second terminal and try another apply while the first is running. The
-DynamoDB table will prevent concurrent state writes.
-
-## Step 4: Inspect state
-
-```bash
 terraform state list
-terraform state show aws_s3_bucket.app_artifacts
-terraform state pull > app-state.json
 ```
 
-Delete the pulled state copy after inspection:
+### Step 3 — Destroy (reverse order)
 
 ```bash
-rm app-state.json
-```
-
-## Step 5: Practice migration
-
-To practice local-to-remote migration:
-
-1. Temporarily move `backend.tf` out of the app directory.
-2. Run `terraform init` and `terraform apply`.
-3. Move `backend.tf` back.
-4. Run `terraform init -migrate-state` with backend config values.
-
-Terraform will copy the local state into S3.
-
-## Step 6: Cleanup
-
-Destroy app resources first:
-
-```bash
-cd app
+cd ../app && terraform destroy
+cd ../bootstrap && terraform apply -var="force_destroy_state_bucket=true"
 terraform destroy
 ```
 
-Then destroy bootstrap resources if this is a disposable lab:
+---
 
-```bash
-cd ../bootstrap
-terraform destroy -var="force_destroy_state_bucket=true"
-```
+## Optional: local-to-remote migration practice
 
-Production warning: state buckets are usually retained, versioned, and protected
-from accidental deletion.
+1. Temporarily remove `app/backend.tf`.
+2. Apply locally in `app/`.
+3. Restore `backend.tf` and run `terraform init -migrate-state` with backend config.
 
+See `app/README.md` for details.
+
+---
+
+## Troubleshooting
+
+- **Backend bucket not found:** Run bootstrap first and use exact output values in `init -backend-config`.
+- **State lock errors:** Ensure no other process holds the DynamoDB lock; check for stale locks.
+- **Cannot destroy bootstrap bucket:** Set `force_destroy_state_bucket=true` after destroying the app stack.

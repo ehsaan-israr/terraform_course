@@ -1,50 +1,79 @@
-# Module 2 Project - Simple Web Server with Elastic IP
+# Module 2 Project — Web Server with Security Group, EC2, and Elastic IP
 
-This project builds a small VPC-light AWS environment in `us-east-1`:
+## Starting point and purpose
 
-- Default VPC and subnet lookup.
-- Security group allowing HTTP from anywhere and SSH from your trusted CIDR.
-- Amazon Linux 2023 EC2 instance.
-- nginx installed and started by `user_data`.
-- Elastic IP associated with the instance.
+This project builds on Module 1 by introducing **Terraform basics**: `locals`, implicit dependencies, variable validation, and **Elastic IP** for a stable public address. You provision a single nginx web server in the default VPC.
+
+**What you build:**
+
+- A security group with HTTP and SSH rules.
+- An EC2 instance with nginx installed via `user_data`.
+- An Elastic IP associated with the instance.
+
+**Learning goals:** shared naming via `locals`, implicit resource dependencies, validated variables, and stable public addressing.
+
+---
+
+## Architecture
+
+```text
+Internet
+   |
+   +-- HTTP :80 --> Security Group --> EC2 (nginx)
+   |
+   +-- SSH :22 (trusted CIDR only)
+   |
+Elastic IP (stable public IP) --> EC2
+```
+
+---
+
+## File index
+
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Pins Terraform `>= 1.6.0` and AWS provider `~> 5.0`. |
+| `providers.tf` | AWS provider; applies `local.common_tags` as default tags. |
+| `locals.tf` | Shared `name_prefix` and `common_tags` used across resources. |
+| `variables.tf` | Region, project name (validated), environment (dev/staging/prod), instance type, SSH CIDR, optional key pair. |
+| `main.tf` | Data sources, security group, EC2 instance, Elastic IP. |
+| `outputs.tf` | Instance ID, Elastic IP, public DNS, web URL, example SSH command. |
+| `terraform.tfvars.example` | Example variable values. |
+| `.gitignore` | Standard Terraform ignores. |
+| `.terraform.lock.hcl` | Provider version lock file. |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Compute (EC2 + EIP)** | `main.tf` | `aws_instance.web`, `aws_eip.web` |
+| **Security / networking** | `main.tf` | `aws_security_group.web`; default VPC data sources |
+| **Naming and tagging** | `locals.tf`, `providers.tf` | `name_prefix`, `common_tags` |
+| **Configuration** | `variables.tf`, `versions.tf` | Validated inputs, provider constraints |
+| **Post-apply visibility** | `outputs.tf` | Elastic IP, `web_url`, SSH command |
+
+---
 
 ## Prerequisites
 
-- Terraform 1.6 or newer.
-- AWS credentials configured locally.
-- Permissions for EC2, security groups, Elastic IPs, and default VPC data lookup.
-- Optional existing EC2 key pair if you want SSH access.
+- Terraform 1.6+, AWS credentials, permissions for EC2/EIP/security groups in `us-east-1`.
 
-Verify AWS credentials:
-
-```bash
-aws sts get-caller-identity
-```
+---
 
 ## Configure
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
+# Edit allowed_ssh_cidr to your public IP/32
 ```
 
-Edit `terraform.tfvars`:
+---
 
-```hcl
-aws_region       = "us-east-1"
-project_name     = "terraform-basics"
-environment      = "dev"
-instance_type    = "t3.micro"
-allowed_ssh_cidr = "YOUR_PUBLIC_IP/32"
-key_name         = null
-```
+## Run
 
-Find your public IP:
-
-```bash
-curl https://checkip.amazonaws.com
-```
-
-## Apply
+Single root — EIP depends on the instance implicitly.
 
 ```bash
 terraform init
@@ -52,40 +81,13 @@ terraform fmt
 terraform validate
 terraform plan -out=tfplan
 terraform apply tfplan
-```
-
-Open the web server:
-
-```bash
 terraform output web_url
-```
-
-The Elastic IP may respond before nginx has finished installing. If the first request fails, wait one or two minutes and retry.
-
-## Destroy
-
-```bash
 terraform destroy
 ```
 
-Elastic IPs can incur cost when left allocated. Always destroy this lab when finished.
-
-## Learning points
-
-- `locals.tf` centralizes common names and tags.
-- `aws_instance.web` implicitly depends on `aws_security_group.web` because it references the security group ID.
-- `aws_eip.web` implicitly depends on `aws_instance.web` because it references the instance ID.
-- Outputs make the public IP and URL easy to consume after apply.
-
-## State and Git warning
-
-The `.gitignore` excludes local state files, private variable files, and plan files. Do not commit `terraform.tfstate` or real `terraform.tfvars`.
-
-In production, use a remote backend with locking instead of local state.
+---
 
 ## Troubleshooting
 
-- **AddressLimitExceeded:** Your account may have reached the Elastic IP quota. Release unused EIPs or skip this project until quota is available.
-- **InvalidKeyPair.NotFound:** Set `key_name = null` or use an existing key pair in `us-east-1`.
-- **No default VPC found:** Recreate the default VPC or adapt the project to create its own VPC.
-- **SSH timeout:** Confirm `allowed_ssh_cidr` is your current public IP with `/32`, and use the correct private key.
+- **EIP limit reached:** Release unused Elastic IPs in the AWS console.
+- **Web page does not load:** Wait for `user_data`, verify security group and instance status.

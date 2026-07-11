@@ -1,81 +1,68 @@
-# State Management App Stack
+# App Stack — Remote Backend + Sample S3 Bucket
 
-This stack is intentionally small. Its purpose is to demonstrate how an
-application project stores state in the backend created by `../bootstrap`.
+## Starting point and purpose
 
-It creates one private, encrypted, versioned S3 bucket for sample application
-artifacts. The important learning goal is the backend workflow, not the bucket
-itself.
+This is the **second root** in the Module 4 project. It demonstrates consuming a remote S3 backend created by `bootstrap/` and provisions a small sample S3 artifact bucket. The learning focus is **remote state workflow**, not the bucket itself.
 
-## Bootstrap then migrate workflow
+---
 
-1. Create backend resources:
+## File index
 
-   ```bash
-   cd ../bootstrap
-   terraform init
-   terraform apply
-   terraform output
-   ```
+| File | Purpose |
+|------|---------|
+| `backend.tf` | Partial S3 backend block — bucket, key, region, and lock table supplied at `init`. |
+| `versions.tf` | Terraform `>= 1.5.0`, AWS provider. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | Region, name prefix, environment, tags. |
+| `main.tf` | `aws_s3_bucket.app_artifacts` with encryption, versioning, and public access block. |
+| `outputs.tf` | Artifact bucket name and ARN. |
+| `README.md` | This file. |
 
-2. Copy these output values:
+---
 
-   - `state_bucket_name`
-   - `lock_table_name`
-   - `backend_region`
+## Feature → file mapping
 
-3. Initialize this app with the remote backend:
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Remote state** | `backend.tf` | S3 backend configuration |
+| **Artifact storage** | `main.tf` | `aws_s3_bucket.app_artifacts` + hardening |
+| **Configuration** | `variables.tf`, `providers.tf` | Inputs and provider setup |
 
-   ```bash
-   cd ../app
-   terraform init \
-     -backend-config="bucket=<state_bucket_name>" \
-     -backend-config="key=state-management/dev/terraform.tfstate" \
-     -backend-config="region=<backend_region>" \
-     -backend-config="dynamodb_table=<lock_table_name>" \
-     -backend-config="encrypt=true"
-   ```
+---
 
-4. Apply the app:
+## Run
 
-   ```bash
-   terraform plan -out=tfplan
-   terraform apply tfplan
-   ```
-
-5. Inspect state safely:
-
-   ```bash
-   terraform state list
-   terraform state show aws_s3_bucket.app_artifacts
-   terraform state pull > state-copy.json
-   rm state-copy.json
-   ```
-
-## Migrating existing local state
-
-If you first applied this app with local state, add `backend.tf` and run:
+Requires bootstrap outputs first.
 
 ```bash
-terraform init -migrate-state \
+terraform init \
   -backend-config="bucket=<state_bucket_name>" \
   -backend-config="key=state-management/dev/terraform.tfstate" \
   -backend-config="region=<backend_region>" \
   -backend-config="dynamodb_table=<lock_table_name>" \
   -backend-config="encrypt=true"
+terraform plan -out=tfplan
+terraform apply tfplan
+terraform state list
 ```
 
-Terraform will ask whether to copy the local state into S3. Confirm only after
-you verify the bucket, key, region, and AWS account.
+---
+
+## State migration practice
+
+To practice migrating from local to remote state:
+
+1. Remove or comment out `backend.tf`.
+2. `terraform init` and `terraform apply` (local state).
+3. Restore `backend.tf`.
+4. `terraform init -migrate-state` with the backend config flags above.
+
+---
 
 ## Cleanup
-
-Destroy the app stack before destroying the bootstrap stack:
 
 ```bash
 terraform destroy
 ```
 
-In real environments, do not delete backend buckets until state retention and
-audit requirements have been satisfied.
-
+Destroy this stack **before** destroying the bootstrap backend.

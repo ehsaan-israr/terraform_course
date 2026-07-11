@@ -1,85 +1,76 @@
-# Module 3 Project - Multi-server Application
+# Module 3 Project — Multi-Server App with Intermediate Terraform Patterns
 
-This project demonstrates intermediate Terraform patterns in `us-east-1`:
+## Starting point and purpose
 
-- Data sources for AWS account, default VPC/subnets, and latest Amazon Linux 2023 AMI.
-- `for_each` over a `servers` map.
-- Dynamic ingress blocks from an `ingress_rules` map.
-- Conditional Elastic IP creation with `create_elastic_ips`.
-- Sensitive input and output for a demo admin password.
-- Commented `prevent_destroy` lifecycle guard.
+This project teaches **intermediate Terraform patterns**: `for_each`, dynamic blocks, conditional resources, sensitive variables/outputs, and a commented `prevent_destroy` lifecycle guard. You provision multiple EC2 instances (default: three) in the default VPC.
+
+**What you build:**
+
+- A security group with dynamic ingress rules from a map variable.
+- Multiple EC2 instances keyed by a `servers` map (`for_each`).
+- Optional Elastic IPs per server (conditional on `create_elastic_ips`).
+
+**Learning goals:** map-based iteration, dynamic blocks, conditional creation, sensitive data handling, and lifecycle rules.
+
+---
+
+## Architecture
+
+```text
+                    +-- web-a (EC2) --+
+Internet --> SG --> +-- web-b (EC2) --+--> optional EIPs
+                    +-- worker-a (EC2) -+
+```
+
+Subnets are assigned round-robin from the default VPC via `locals.tf`.
+
+---
+
+## File index
+
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Terraform `>= 1.6.0`, AWS provider `~> 5.0`. |
+| `providers.tf` | AWS provider with default tags from locals. |
+| `locals.tf` | Name prefix, tags, round-robin subnet assignment per server. |
+| `variables.tf` | Servers map, ingress rules map, conditional EIP flag, sensitive `admin_password`. |
+| `main.tf` | Data sources, dynamic security group, `for_each` instances and EIPs. |
+| `outputs.tf` | Account ID, AMI, server IDs/IPs, web URLs, sensitive password. |
+| `terraform.tfvars.example` | Full example with servers and ingress rules. |
+| `.gitignore` | Standard Terraform ignores. |
+| `.terraform.lock.hcl` | Provider version lock file. |
+
+---
+
+## Feature → file mapping
+
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Multi-instance compute** | `main.tf` | `aws_instance.server` (`for_each` over `var.servers`) |
+| **Optional Elastic IPs** | `main.tf` | `aws_eip.server` (conditional `for_each`) |
+| **Dynamic security group** | `main.tf`, `variables.tf` | `aws_security_group.app` with dynamic ingress blocks |
+| **Subnet placement** | `locals.tf` | Round-robin mapping of servers to subnets |
+| **Secrets / sensitive data** | `variables.tf`, `outputs.tf` | `admin_password` (sensitive input and output) |
+| **Lifecycle protection** | `main.tf` | Commented `prevent_destroy` on instances |
+
+---
 
 ## Prerequisites
 
-- Terraform 1.6 or newer.
-- AWS credentials configured locally.
-- Permissions for EC2, security groups, Elastic IPs if enabled, and default VPC data lookup.
-- A default VPC in `us-east-1`.
+- Terraform 1.6+, AWS credentials, EC2/security group permissions.
 
-Check credentials:
-
-```bash
-aws sts get-caller-identity
-```
+---
 
 ## Configure
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
+# Edit ssh CIDR in ingress_rules and set admin_password
 ```
 
-Edit `terraform.tfvars`:
+---
 
-```hcl
-aws_region   = "us-east-1"
-project_name = "terraform-intermediate"
-environment  = "dev"
-key_name     = null
-
-create_elastic_ips = false
-
-servers = {
-  web-a = {
-    instance_type = "t3.micro"
-    role          = "web"
-  }
-  web-b = {
-    instance_type = "t3.micro"
-    role          = "web"
-  }
-  worker-a = {
-    instance_type = "t3.micro"
-    role          = "worker"
-  }
-}
-
-ingress_rules = {
-  http = {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ssh = {
-    description = "SSH from my current public IP"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["YOUR_PUBLIC_IP/32"]
-  }
-}
-
-admin_password = "use-a-demo-value-only"
-```
-
-Find your public IP:
-
-```bash
-curl https://checkip.amazonaws.com
-```
-
-## Apply
+## Run
 
 ```bash
 terraform init
@@ -87,45 +78,16 @@ terraform fmt
 terraform validate
 terraform plan -out=tfplan
 terraform apply tfplan
-```
-
-View outputs:
-
-```bash
 terraform output
-terraform output web_urls
-```
-
-To intentionally read the sensitive demo password:
-
-```bash
-terraform output -raw admin_password
-```
-
-## Destroy
-
-```bash
+terraform output -raw admin_password   # sensitive
 terraform destroy
 ```
 
-If you uncomment the `prevent_destroy` lifecycle block in `main.tf`, Terraform will block destruction of the protected instances. Re-comment or remove the block before destroying this lab.
+If `prevent_destroy` is uncommented in `main.tf`, destroy will fail until re-commented.
 
-## Learning points
-
-- `aws_instance.server` uses `for_each`, so addresses look like `aws_instance.server["web-a"]`.
-- `aws_eip.server` uses conditional creation: `var.create_elastic_ips ? var.servers : {}`.
-- The security group uses a dynamic `ingress` block to render each rule from `var.ingress_rules`.
-- `admin_password` is marked sensitive, which hides normal CLI display but does not remove it from state.
-
-## State and Git warning
-
-Do not commit `terraform.tfstate`, real `terraform.tfvars`, or plan files. This project includes a `.gitignore` for local learning.
-
-For production, store state remotely with encryption and locking. Treat state as sensitive data.
+---
 
 ## Troubleshooting
 
-- **Invalid CIDR in SSH rule:** Replace the documentation IP `203.0.113.10/32` with your real public IP and `/32`.
-- **Elastic IP quota errors:** Leave `create_elastic_ips = false` or release unused EIPs.
-- **No default VPC:** Recreate the default VPC or adapt the project to use an existing VPC/subnet data source.
-- **Unexpected replacements after renaming a server key:** `for_each` keys are resource identity. Use a `moved` block or `terraform state mv` for intentional renames.
+- **Too many instances for subnets:** Reduce the `servers` map or ensure enough default subnets exist.
+- **Sensitive output hidden:** Use `terraform output -raw admin_password`.

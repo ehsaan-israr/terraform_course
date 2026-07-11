@@ -1,138 +1,137 @@
-# Module 05 Project - Composing Reusable Modules
+# Module 5 Project — Composing Reusable Modules
 
-This project demonstrates a root module that composes four local child modules:
+## Starting point and purpose
 
-```text
-project/
-  main.tf
-  variables.tf
-  outputs.tf
-  modules/
-    vpc/
-    security-groups/
-    ecs/
-    rds/
-```
+This project demonstrates **composing reusable Terraform modules** into a multi-tier AWS skeleton. The root module wires four local child modules: VPC → security groups → ECS + RDS.
+
+**What you build:**
+
+- A VPC with public/private subnets and optional NAT gateway.
+- Tiered security groups (ALB, app, database).
+- An ECS Fargate cluster and task definition (service disabled by default).
+- An encrypted PostgreSQL RDS instance.
+
+**Learning goals:** module inputs/outputs as contracts, passing values between modules, and root-module composition.
+
+---
 
 ## Architecture
 
 ```text
 +-------------------+
 | Root module       |
-| environment glue  |
+| (environment glue)|
 +---------+---------+
           |
           +-------------------+
           |                   |
           v                   v
   +---------------+    +-------------------+
-  | vpc module    | -> | security-groups   |
+  | vpc           | -> | security-groups   |
   +-------+-------+    +---------+---------+
           |                      |
           | subnet IDs           | SG IDs
           v                      v
   +---------------+    +-------------------+
-  | ecs module    |    | rds module        |
+  | ecs           |    | rds               |
   | cluster/task  |    | private database  |
   +---------------+    +-------------------+
 ```
 
-## What each module owns
+---
 
-### `modules/vpc`
+## File index
 
-Creates:
+### Root module
 
-- VPC.
-- Public subnets.
-- Private subnets.
-- Internet gateway.
-- Public route table.
-- Private route table.
-- Optional NAT gateway.
+| File | Purpose |
+|------|---------|
+| `versions.tf` | Terraform `>= 1.5.0`; AWS and random providers. |
+| `providers.tf` | AWS provider configuration. |
+| `variables.tf` | VPC CIDRs, AZs, NAT flag, app port, DB username, tags. |
+| `main.tf` | Instantiates all four child modules and passes outputs between them. |
+| `outputs.tf` | VPC/subnet IDs, ECS cluster, RDS endpoint, password warning. |
+| `README.md` | This file. |
 
-Outputs subnet IDs and VPC ID for other modules.
+### `modules/vpc/`
 
-### `modules/security-groups`
+| File | Purpose |
+|------|---------|
+| `main.tf` | VPC, IGW, public/private subnets, route tables, optional NAT. |
+| `variables.tf` | CIDRs, AZs, NAT flag, tags. |
+| `outputs.tf` | VPC ID, subnet IDs, route table IDs. |
 
-Creates:
+### `modules/security-groups/`
 
-- ALB security group.
-- App security group.
-- Database security group.
-- Tier-to-tier ingress and egress rules.
+| File | Purpose |
+|------|---------|
+| `main.tf` | ALB, app, and database SGs with tier-to-tier rules. |
+| `variables.tf` | VPC ID, app/db ports, allowed HTTP CIDRs. |
+| `outputs.tf` | ALB, app, database SG IDs. |
 
-Outputs security group IDs for compute and database modules.
+### `modules/ecs/`
 
-### `modules/ecs`
+| File | Purpose |
+|------|---------|
+| `main.tf` | ECS cluster, CloudWatch log group, IAM execution role, Fargate task def, optional service. |
+| `variables.tf` | Subnets, SG, container image/port, CPU/memory, `create_service` flag. |
+| `outputs.tf` | Cluster, task definition, execution role, optional service name. |
 
-Creates:
+### `modules/rds/`
 
-- ECS cluster.
-- CloudWatch log group.
-- Task execution role.
-- Fargate task definition.
-- Optional ECS service skeleton.
+| File | Purpose |
+|------|---------|
+| `main.tf` | Random password, DB subnet group, encrypted PostgreSQL RDS. |
+| `variables.tf` | Subnets, DB SG, engine version, instance class, storage. |
+| `outputs.tf` | Endpoint, port, subnet group, sensitive generated password. |
 
-The service is disabled by default in the root example with `create_service =
-false`. Enable it after you have NAT or public image access, an application
-image, and load balancer wiring.
+---
 
-### `modules/rds`
+## Feature → file mapping
 
-Creates:
+| Feature | Contributing files | Key resources |
+|---------|-------------------|---------------|
+| **Networking** | `modules/vpc/main.tf` | VPC, subnets, IGW, route tables, optional NAT |
+| **Security groups** | `modules/security-groups/main.tf` | ALB, app, database SGs and rules |
+| **Compute (ECS/Fargate)** | `modules/ecs/main.tf`, root `main.tf` | ECS cluster, task definition, optional service |
+| **Database (RDS)** | `modules/rds/main.tf`, root `main.tf` | PostgreSQL RDS, subnet group |
+| **IAM** | `modules/ecs/main.tf` | ECS task execution role |
+| **Monitoring** | `modules/ecs/main.tf` | CloudWatch log group, Container Insights |
+| **Module composition** | root `main.tf` | Wires VPC subnets → ECS/RDS, VPC ID → SGs, SG IDs → ECS/RDS |
 
-- DB subnet group using private subnets.
-- Encrypted PostgreSQL RDS instance.
-- Randomly generated master password.
+**Data flow in root `main.tf`:**
 
-Warning: the generated password is marked sensitive in outputs, but it is still
-stored in Terraform state. Protect the backend.
+- `module.vpc.private_subnet_ids` → ECS and RDS
+- `module.vpc.vpc_id` → security groups
+- `module.security_groups.app_security_group_id` → ECS
+- `module.security_groups.database_security_group_id` → RDS
 
-## Run the example
+---
 
-This example creates billable AWS resources. Review cost before applying,
-especially NAT gateways and RDS.
+## Run
 
 ```bash
 terraform init
 terraform fmt -recursive
 terraform validate
 terraform plan
-```
-
-Apply only in a sandbox account:
-
-```bash
-terraform apply
-```
-
-Destroy when finished:
-
-```bash
+terraform apply    # Review cost first (RDS, optional NAT)
 terraform destroy
 ```
 
+ECS service is disabled by default (`create_service = false`). Enable after NAT or VPC endpoints, an application image, and load balancer wiring are in place.
+
+---
+
 ## Learning tasks
 
-1. Open `main.tf` and trace how `module.vpc.private_subnet_ids` flows into the
-   ECS and RDS modules.
-2. Change `enable_nat_gateway` to `true` and inspect the planned resources.
-3. Add a new output from the VPC module for the internet gateway ID.
-4. Add validation to ensure subnet CIDR lists match the number of availability
-   zones.
-5. Set `create_service = true` in the ECS module call and review the additional
-   planned resource.
-6. Replace the local VPC module source with a pinned Git source in a branch and
-   compare the workflow.
+1. Trace how `module.vpc.private_subnet_ids` flows into ECS and RDS in `main.tf`.
+2. Set `enable_nat_gateway = true` and inspect the planned resources.
+3. Add a new output from the VPC module (e.g., internet gateway ID).
+4. Set `create_service = true` in the ECS module call and review the additional resources.
 
-## Production improvement ideas
+---
 
-- One NAT gateway per AZ for resiliency.
-- ALB module with target groups and listener rules.
-- ECS deployment circuit breaker and autoscaling.
-- Secrets Manager for database credentials.
-- RDS deletion protection and final snapshots in production.
-- Module tests in `tests/` or `examples/`.
-- Private module registry publishing and versioning.
+## Cost warning
 
+This example creates billable resources (RDS, optional NAT gateway). Use a sandbox account and destroy when finished.
