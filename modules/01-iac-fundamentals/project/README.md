@@ -8,6 +8,8 @@ This project provisions a small AWS environment in `us-east-1`:
 
 The project intentionally uses the default VPC to keep Module 1 focused on Terraform fundamentals instead of networking design.
 
+To practice the same workflow **without an AWS account**, use the LocalStack twin in [`../project_localstack`](../project_localstack).
+
 ## Prerequisites
 
 - Terraform 1.6 or newer.
