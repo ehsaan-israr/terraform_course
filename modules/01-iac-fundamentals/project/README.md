@@ -55,6 +55,8 @@ S3 bucket (private, versioned, encrypted) — independent of EC2
 
 ---
 
+To practice the same workflow **without an AWS account**, use the LocalStack twin in [`../project_localstack`](../project_localstack).
+
 ## Prerequisites
 
 - Terraform 1.6 or newer.

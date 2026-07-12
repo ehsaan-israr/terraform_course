@@ -1,0 +1,21 @@
+services:
+  localstack:
+    image: localstack/localstack:4.3
+    container_name: terraform-course-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3,ec2,sts,iam
+      DEBUG: "0"
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - ./localstack-init/ready.d:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  localstack-data:
