@@ -1,0 +1,64 @@
+name: Hello Workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Name to greet (overrides secret when provided)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hello-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GLOBAL_GREETING: "Hello, GitHub Actions!"
+  AWS_REGION: us-east-1
+
+jobs:
+  greet:
+    name: Greet
+    runs-on: ubuntu-latest
+    env:
+      JOB_ENV: course-module-06
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print greeting
+        run: echo "${{ env.GLOBAL_GREETING }}"
+
+      - name: Show region from repository variable
+        env:
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          echo "Region from vars.AWS_REGION: ${REGION:-${{ env.AWS_REGION }}}"
+          echo "Job env: $JOB_ENV"
+
+      - name: Greet using secret (masked)
+        env:
+          GREETING_NAME: ${{ secrets.COURSE_GREETING_NAME }}
+          INPUT_NAME: ${{ github.event.inputs.name }}
+        run: |
+          TARGET="${INPUT_NAME:-${GREETING_NAME:-Learner}}"
+          echo "Greeting target: ${TARGET}"
+
+      - name: Manual dispatch only
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Triggered manually by ${{ github.actor }}"
+
+  post-greet:
+    name: Post-greet summary
+    needs: greet
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Job 'greet' completed for ref ${{ github.ref }}"

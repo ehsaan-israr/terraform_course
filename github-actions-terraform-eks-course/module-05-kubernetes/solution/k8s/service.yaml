@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: course-nginx
+  namespace: course-app
+  labels:
+    app: course-nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: course-nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

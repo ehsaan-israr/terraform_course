@@ -1,0 +1,8 @@
+# Copy to backend.hcl and customize before: terraform init -backend-config=backend.hcl
+# Do NOT commit backend.hcl if it contains account-specific secrets.
+
+bucket         = "YOUR_UNIQUE_TF_STATE_BUCKET_NAME"
+key            = "module-09/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "YOUR_TF_LOCK_TABLE_NAME"
+encrypt        = true

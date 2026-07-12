@@ -1,0 +1,102 @@
+name: Capstone CD Staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "module-12-capstone/solution/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: staging
+  TF_DIR: module-12-capstone/solution/terraform
+  K8S_OVERLAY: module-12-capstone/solution/kubernetes/overlays/staging
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan (staging)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+      - run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "staging/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          terraform init -backend-config=backend.hcl
+          terraform plan -var-file=../environments/staging/terraform.tfvars
+
+  terraform-apply:
+    name: Terraform Apply (staging)
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    outputs:
+      cluster_name: ${{ steps.tf.outputs.cluster_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+      - run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "staging/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          terraform init -backend-config=backend.hcl
+          terraform apply -auto-approve -var-file=../environments/staging/terraform.tfvars
+      - id: tf
+        run: echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to EKS (staging)
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: |
+          aws eks update-kubeconfig \
+            --name ${{ needs.terraform-apply.outputs.cluster_name }} \
+            --region ${{ env.AWS_REGION }}
+      - working-directory: ${{ env.K8S_OVERLAY }}
+        run: |
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names gha-terraform-eks-staging-capstone-api \
+            --query 'repositories[0].repositoryUri' --output text)
+          kustomize edit set image capstone-api=${ECR_URL}:${{ github.sha }}
+      - run: |
+          kubectl apply -k ${{ env.K8S_OVERLAY }}
+          kubectl rollout status deployment/stg-capstone-api -n capstone-app --timeout=300s

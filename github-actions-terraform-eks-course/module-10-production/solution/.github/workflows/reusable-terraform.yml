@@ -1,0 +1,85 @@
+name: Reusable Terraform
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      terraform_action:
+        required: true
+        type: string
+        description: "plan or apply"
+      tfvars_file:
+        required: true
+        type: string
+      aws_role_arn:
+        required: true
+        type: string
+      working_directory:
+        required: false
+        type: string
+        default: module-10-production/solution/terraform
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_VERSION: "1.7.5"
+  AWS_REGION: us-east-1
+
+jobs:
+  terraform:
+    name: Terraform ${{ inputs.terraform_action }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws_role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Write backend config
+        run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "${{ inputs.environment }}/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: inputs.terraform_action == 'plan'
+        run: terraform plan -no-color -var-file=${{ inputs.tfvars_file }}
+
+      - name: Terraform Apply
+        if: inputs.terraform_action == 'apply'
+        run: terraform apply -auto-approve -var-file=${{ inputs.tfvars_file }}
+
+      - name: Output
+        if: inputs.terraform_action == 'apply'
+        run: terraform output -no-color

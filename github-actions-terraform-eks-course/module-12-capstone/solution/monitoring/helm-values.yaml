@@ -1,0 +1,15 @@
+# Capstone monitoring — extends Module 11 kube-prometheus-stack
+# Use with: helm upgrade --install ... -f monitoring/helm-values.yaml
+
+prometheus:
+  prometheusSpec:
+    retention: 14d
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+grafana:
+  enabled: true
+  service:
+    type: ClusterIP
+
+defaultRules:
+  create: true

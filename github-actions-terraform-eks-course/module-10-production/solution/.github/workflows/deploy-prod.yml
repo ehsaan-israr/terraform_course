@@ -1,0 +1,58 @@
+name: Deploy Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy-prod" to confirm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm input
+        if: inputs.confirm != 'deploy-prod'
+        run: |
+          echo "You must type deploy-prod to continue"
+          exit 1
+
+      - name: Enforce main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Production deploys must run from main branch"
+          exit 1
+
+  plan:
+    needs: validate
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: prod
+      terraform_action: plan
+      tfvars_file: module-10-production/solution/config/prod.tfvars
+      aws_role_arn: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+    secrets: inherit
+
+  apply:
+    needs: plan
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: prod
+      terraform_action: apply
+      tfvars_file: module-10-production/solution/config/prod.tfvars
+      aws_role_arn: ${{ secrets.AWS_APPLY_ROLE_ARN }}
+    secrets: inherit
+
+  docker:
+    needs: apply
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      environment: prod
+      ecr_repository: gha-terraform-eks-prod-sample-app
+      aws_role_arn: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+    secrets: inherit

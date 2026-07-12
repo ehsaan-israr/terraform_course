@@ -1,0 +1,14 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+!**/environments/**/*.tfvars
+crash.log
+override.tf
+*.plan
+node_modules/
+.idea/
+.vscode/
+*.pem
+kubeconfig

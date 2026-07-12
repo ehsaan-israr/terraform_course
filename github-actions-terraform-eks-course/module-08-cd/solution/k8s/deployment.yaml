@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-api
+  namespace: course-app
+  labels:
+    app: course-api
+    component: api
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: course-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # maxSurge: 1 — allow one extra Pod during update (2→3 temporarily)
+      maxSurge: 1
+      # maxUnavailable: 0 — never drop below 2 ready Pods during rollout
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: course-api
+        component: api
+    spec:
+      containers:
+        - name: course-api
+          # CD workflow replaces IMAGE_PLACEHOLDER at deploy time
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: course-api-config
+          env:
+            - name: PORT
+              value: "3000"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30

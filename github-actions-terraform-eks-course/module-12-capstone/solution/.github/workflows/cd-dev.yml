@@ -1,0 +1,101 @@
+name: Capstone CD Dev
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "module-12-capstone/solution/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: dev
+  TF_DIR: module-12-capstone/solution/terraform
+  K8S_OVERLAY: module-12-capstone/solution/kubernetes/overlays/dev
+
+jobs:
+  terraform-apply:
+    name: Terraform Apply (dev)
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Init backend
+        run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "dev/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          terraform init -backend-config=backend.hcl
+
+      - name: Apply
+        run: terraform apply -auto-approve -var-file=../environments/dev/terraform.tfvars
+
+      - name: Save outputs
+        id: tf
+        run: |
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "ecr_repo=$(terraform output -raw ecr_repository_name)" >> $GITHUB_OUTPUT
+
+    outputs:
+      cluster_name: ${{ steps.tf.outputs.cluster_name }}
+
+  deploy:
+    name: Deploy to EKS (dev)
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ needs.terraform-apply.outputs.cluster_name }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Set image tag
+        working-directory: ${{ env.K8S_OVERLAY }}
+        run: |
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names gha-terraform-eks-dev-capstone-api \
+            --query 'repositories[0].repositoryUri' --output text)
+          kustomize edit set image capstone-api=${ECR_URL}:${{ github.sha }}
+
+      - name: Deploy
+        run: |
+          kubectl apply -k ${{ env.K8S_OVERLAY }}
+          kubectl rollout status deployment/dev-capstone-api -n capstone-app --timeout=300s
+
+      - name: Deploy monitoring
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace monitoring --create-namespace \
+            -f module-12-capstone/solution/monitoring/helm-values.yaml \
+            --wait --timeout 10m || true

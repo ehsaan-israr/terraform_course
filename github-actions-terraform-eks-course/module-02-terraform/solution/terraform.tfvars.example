@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and customize.
+# Do not commit terraform.tfvars — it is listed in .gitignore.
+
+aws_region   = "us-east-1"
+project_name = "gha-eks-course"
+environment  = "dev"
+bucket_suffix = "abc123"
+
+common_tags = {
+  Owner = "platform-team"
+}

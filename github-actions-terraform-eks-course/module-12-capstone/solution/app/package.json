@@ -1,0 +1,13 @@
+{
+  "name": "capstone-api",
+  "version": "1.0.0",
+  "description": "Capstone API for GitHub Actions EKS course",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test src/server.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

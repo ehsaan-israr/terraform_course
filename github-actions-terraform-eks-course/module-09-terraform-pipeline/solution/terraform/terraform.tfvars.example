@@ -1,0 +1,8 @@
+state_bucket_name = "your-unique-tf-state-bucket-us-east-1"
+lock_table_name   = "terraform-state-lock"
+github_org        = "your-github-org"
+github_repo       = "github-actions-terraform-eks-course"
+aws_region        = "us-east-1"
+project_name      = "gha-terraform-eks"
+environment       = "dev"
+cluster_name      = "module09-eks"

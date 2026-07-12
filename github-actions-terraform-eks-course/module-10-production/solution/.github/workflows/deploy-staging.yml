@@ -1,0 +1,41 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "module-10-production/solution/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: staging
+      terraform_action: plan
+      tfvars_file: module-10-production/solution/config/staging.tfvars
+      aws_role_arn: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+    secrets: inherit
+
+  apply:
+    needs: plan
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: staging
+      terraform_action: apply
+      tfvars_file: module-10-production/solution/config/staging.tfvars
+      aws_role_arn: ${{ secrets.AWS_APPLY_ROLE_ARN }}
+    secrets: inherit
+
+  docker:
+    needs: apply
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      environment: staging
+      ecr_repository: gha-terraform-eks-staging-sample-app
+      aws_role_arn: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+    secrets: inherit

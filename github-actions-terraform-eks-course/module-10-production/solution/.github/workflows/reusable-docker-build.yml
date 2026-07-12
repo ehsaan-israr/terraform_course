@@ -1,0 +1,60 @@
+name: Reusable Docker Build
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      ecr_repository:
+        required: true
+        type: string
+      aws_role_arn:
+        required: true
+        type: string
+      dockerfile:
+        required: false
+        type: string
+        default: module-10-production/solution/docker/Dockerfile
+      context:
+        required: false
+        type: string
+        default: module-10-production/solution/docker
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-push:
+    name: Build and Push (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws_role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/${{ inputs.ecr_repository }}:$IMAGE_TAG \
+            -t $ECR_REGISTRY/${{ inputs.ecr_repository }}:latest \
+            -f ${{ inputs.dockerfile }} ${{ inputs.context }}
+          docker push $ECR_REGISTRY/${{ inputs.ecr_repository }}:$IMAGE_TAG
+          docker push $ECR_REGISTRY/${{ inputs.ecr_repository }}:latest

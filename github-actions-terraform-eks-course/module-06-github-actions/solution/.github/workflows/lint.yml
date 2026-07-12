@@ -1,0 +1,55 @@
+name: Lint Workflow
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.js"
+      - "**.json"
+      - "**.yml"
+      - "**.yaml"
+      - "module-06-github-actions/**"
+      - "module-07-ci/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (${{ matrix.os }}, node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [18, 20, 22]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verify Node version
+        run: |
+          node --version
+          npm --version
+
+      - name: Run placeholder lint
+        run: |
+          echo "Lint OK on Node ${{ matrix.node-version }}"
+          # Replace with: npm ci && npm run lint when application code exists
+
+      - name: Validate workflow YAML (optional)
+        run: |
+          if command -v actionlint >/dev/null 2>&1; then
+            actionlint .github/workflows/*.yml
+          else
+            echo "actionlint not installed — skipping"
+          fi

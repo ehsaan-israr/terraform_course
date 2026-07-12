@@ -1,0 +1,120 @@
+name: Capstone CD Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy-prod" to confirm production deployment'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: prod
+  TF_DIR: module-12-capstone/solution/terraform
+  K8S_OVERLAY: module-12-capstone/solution/kubernetes/overlays/prod
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm deployment
+        if: inputs.confirm != 'deploy-prod'
+        run: exit 1
+      - name: Enforce main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Production deploys must run from main"
+          exit 1
+
+  terraform-plan:
+    needs: validate
+    name: Terraform Plan (prod)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+      - run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "prod/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          terraform init -backend-config=backend.hcl
+          terraform plan -var-file=../environments/prod/terraform.tfvars
+
+  terraform-apply:
+    needs: terraform-plan
+    name: Terraform Apply (prod)
+    runs-on: ubuntu-latest
+    environment: prod
+    outputs:
+      cluster_name: ${{ steps.tf.outputs.cluster_name }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+      - run: |
+          cat > backend.hcl <<EOF
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "prod/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+          terraform init -backend-config=backend.hcl
+          terraform apply -auto-approve -var-file=../environments/prod/terraform.tfvars
+      - id: tf
+        run: echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: terraform-apply
+    name: Deploy to EKS (prod)
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: |
+          aws eks update-kubeconfig \
+            --name ${{ needs.terraform-apply.outputs.cluster_name }} \
+            --region ${{ env.AWS_REGION }}
+      - working-directory: ${{ env.K8S_OVERLAY }}
+        run: |
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names gha-terraform-eks-prod-capstone-api \
+            --query 'repositories[0].repositoryUri' --output text)
+          kustomize edit set image capstone-api=${ECR_URL}:${{ github.sha }}
+      - run: |
+          kubectl apply -k ${{ env.K8S_OVERLAY }}
+          kubectl rollout status deployment/prod-capstone-api -n capstone-app --timeout=300s
+      - name: Smoke test
+        run: |
+          kubectl run curl-smoke --rm -i --restart=Never --image=curlimages/curl:latest -- \
+            curl -sf http://capstone-api.capstone-app/health

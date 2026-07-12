@@ -8,6 +8,14 @@ A complete, project-based course that takes a backend engineer from **first Terr
 
 ---
 
+## Related course: GitHub CI/CD with AWS EKS
+
+This repository also includes a **companion course** focused on **GitHub Actions CI/CD**, **Amazon EKS**, and **Terraform**:
+
+**[github-actions-terraform-eks-course/](github-actions-terraform-eks-course/)** — 12 modules from toolchain setup through a production capstone with multi-environment pipelines, ECR, Kubernetes deployments, monitoring, and approval gates.
+
+---
+
 ## What you will build
 
 | Stage | Outcome |

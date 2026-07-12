@@ -1,0 +1,73 @@
+name: Capstone CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "module-12-capstone/solution/**"
+  push:
+    branches: [develop, main]
+    paths:
+      - "module-12-capstone/solution/app/**"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  APP_PATH: module-12-capstone/solution/app
+
+jobs:
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.APP_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm test
+
+  build-push:
+    name: Build and Push Image
+    needs: test
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'staging' || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "target=staging" >> $GITHUB_OUTPUT
+            echo "ecr_repo=gha-terraform-eks-staging-capstone-api" >> $GITHUB_OUTPUT
+          else
+            echo "target=dev" >> $GITHUB_OUTPUT
+            echo "ecr_repo=gha-terraform-eks-dev-capstone-api" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/${{ steps.env.outputs.ecr_repo }}:$IMAGE_TAG \
+            -t $REGISTRY/${{ steps.env.outputs.ecr_repo }}:latest \
+            -f ${{ env.APP_PATH }}/Dockerfile ${{ env.APP_PATH }}
+          docker push $REGISTRY/${{ steps.env.outputs.ecr_repo }}:$IMAGE_TAG
+          docker push $REGISTRY/${{ steps.env.outputs.ecr_repo }}:latest

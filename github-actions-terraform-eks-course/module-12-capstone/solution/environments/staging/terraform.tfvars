@@ -1,0 +1,10 @@
+aws_region        = "us-east-1"
+project_name      = "gha-terraform-eks"
+environment       = "staging"
+state_bucket_name = "your-unique-tf-state-bucket-us-east-1"
+github_org        = "your-github-org"
+github_repo       = "github-actions-terraform-eks-course"
+cluster_version   = "1.28"
+node_count        = 2
+instance_types    = ["t3.medium"]
+vpc_cidr          = "10.1.0.0/16"

@@ -1,0 +1,26 @@
+# Optional — requires AWS Load Balancer Controller installed on the cluster.
+# Skip this file if you only use kubectl port-forward for Module 05.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: course-nginx
+  namespace: course-app
+  labels:
+    app: course-nginx
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: course-nginx
+                port:
+                  number: 80

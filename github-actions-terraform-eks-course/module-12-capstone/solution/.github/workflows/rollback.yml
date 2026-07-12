@@ -1,0 +1,82 @@
+name: Capstone Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: Git SHA or image tag to roll back to
+        required: true
+        type: string
+      confirm:
+        description: 'Type "rollback" to confirm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  rollback:
+    name: Rollback (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate confirmation
+        if: inputs.confirm != 'rollback'
+        run: exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve cluster name
+        id: cluster
+        run: |
+          echo "name=gha-terraform-eks-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+
+      - name: Kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ steps.cluster.outputs.name }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Set rollback image
+        working-directory: module-12-capstone/solution/kubernetes/overlays/${{ inputs.environment }}
+        run: |
+          ECR_REPO=gha-terraform-eks-${{ inputs.environment }}-capstone-api
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names $ECR_REPO \
+            --query 'repositories[0].repositoryUri' --output text)
+          kustomize edit set image capstone-api=${ECR_URL}:${{ inputs.image_tag }}
+
+      - name: Apply rollback
+        run: |
+          OVERLAY=module-12-capstone/solution/kubernetes/overlays/${{ inputs.environment }}
+          kubectl apply -k $OVERLAY
+          PREFIX=""
+          case "${{ inputs.environment }}" in
+            dev) PREFIX="dev-" ;;
+            staging) PREFIX="stg-" ;;
+            prod) PREFIX="prod-" ;;
+          esac
+          kubectl rollout status deployment/${PREFIX}capstone-api -n capstone-app --timeout=300s
+
+      - name: Verify health
+        run: |
+          kubectl run curl-rollback --rm -i --restart=Never --image=curlimages/curl:latest -- \
+            curl -sf http://capstone-api.capstone-app/health

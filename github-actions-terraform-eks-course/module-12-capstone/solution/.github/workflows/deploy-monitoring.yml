@@ -1,0 +1,52 @@
+name: Capstone Deploy Monitoring
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  monitoring:
+    name: Deploy Monitoring (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: |
+          aws eks update-kubeconfig \
+            --name gha-terraform-eks-${{ inputs.environment }} \
+            --region ${{ env.AWS_REGION }}
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: "3.14.4"
+
+      - run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install kube-prometheus-stack \
+            prometheus-community/kube-prometheus-stack \
+            --version 55.5.0 \
+            --namespace monitoring --create-namespace \
+            -f module-12-capstone/solution/monitoring/helm-values.yaml \
+            --wait --timeout 10m
+
+      - run: |
+          kubectl apply -k module-12-capstone/solution/kubernetes/overlays/${{ inputs.environment }}
+          kubectl get servicemonitor -n capstone-app

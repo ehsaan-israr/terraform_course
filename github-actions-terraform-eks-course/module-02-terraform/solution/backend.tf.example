@@ -1,0 +1,15 @@
+# Copy to backend.tf and customize before: terraform init -migrate-state
+#
+# Prerequisites:
+#   1. S3 bucket for state must already exist (bootstrap once manually).
+#   2. DynamoDB table for locking (optional here, required in Module 09).
+#
+# terraform {
+#   backend "s3" {
+#     bucket         = "mycompany-terraform-state"
+#     key            = "module-02/${terraform.workspace}/terraform.tfstate"
+#     region         = "us-east-1"
+#     encrypt        = true
+#     dynamodb_table = "terraform-locks"
+#   }
+# }
