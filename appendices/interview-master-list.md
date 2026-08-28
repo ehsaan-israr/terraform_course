@@ -201,3 +201,12 @@ Use this as a fast review sheet. Strong answers connect Terraform mechanics to p
 
 60. **How do you migrate from a monolithic Terraform codebase to modules?**
     Identify stable patterns, extract modules one at a time, use moved blocks or state moves, preserve behavior, and test plans in lower environments before production.
+
+61. **What should Terraform own for AWS Glue jobs?**
+    The job resource: name, role, Glue version, workers, timeout, tags, and the S3 URI of the script. Keep Spark code and per-job YAML in Git; upload scripts in CI.
+
+62. **Why generate a full job map if CI only changed one Glue job?**
+    Terraform destroys resources missing from configuration. Full tfvars plus `-target` updates one job without deleting the others.
+
+63. **How do you deploy Glue to four AWS accounts from one workflow file?**
+    GitHub Environments inject per-stage `AWS_ROLE_ARN` and variables. The workflow stays generic; OIDC assumes the environment's role.

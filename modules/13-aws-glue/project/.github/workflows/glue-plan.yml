@@ -1,0 +1,45 @@
+name: Glue Plan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - qa
+      - uat
+      - prod
+    paths:
+      - "gluejobs/terraform/**"
+      - "gluejobs/scripts/**"
+      - "gluejobs/*/job.yaml"
+      - "gluejobs/*/job.yml"
+      - ".github/workflows/*glue-*.yml"
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: AWS region fallback when vars.AWS_REGION is not set
+        required: false
+        default: us-east-1
+      force_all_jobs:
+        description: Plan all jobs (ignore change detection)
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  plan:
+    strategy:
+      fail-fast: false
+      matrix:
+        github_environment: [dev, qa, uat, prod]
+
+    name: Plan (${{ matrix.github_environment }})
+    uses: ./.github/workflows/reusable-glue-terraform.yml
+    with:
+      github_environment: ${{ matrix.github_environment }}
+      terraform_action: plan
+      # Set on PRs only; empty for manual runs
+      pr_number: ${{ github.event.pull_request.number || '' }}
+      aws_region: ${{ inputs.aws_region || 'us-east-1' }}
+      force_all_jobs: ${{ github.event_name == 'workflow_dispatch' && inputs.force_all_jobs || false }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

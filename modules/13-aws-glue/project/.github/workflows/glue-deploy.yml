@@ -1,0 +1,42 @@
+name: Glue Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - qa
+      - uat
+      - prod
+    paths:
+      - "gluejobs/**"
+  workflow_dispatch:
+
+jobs:
+  resolve-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      github_environment: ${{ steps.map.outputs.github_environment }}
+    steps:
+      - name: Map branch to GitHub environment
+        id: map
+        run: |
+          case "${{ github.ref_name }}" in
+            main) ENV="dev" ;;
+            qa)   ENV="qa" ;;
+            uat)  ENV="uat" ;;
+            prod) ENV="prod" ;;
+            *)
+              echo "Unsupported branch: ${{ github.ref_name }}"
+              exit 1
+              ;;
+          esac
+          echo "github_environment=${ENV}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: resolve-environment
+    uses: ./.github/workflows/reusable-glue-terraform.yml
+    with:
+      github_environment: ${{ needs.resolve-environment.outputs.github_environment }}
+      terraform_action: apply
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

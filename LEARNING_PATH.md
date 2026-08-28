@@ -306,7 +306,41 @@ You are ready to advance when:
 
 ---
 
-## Phase 9: Capstone and interview readiness
+## Phase 9: AWS Glue jobs
+
+Primary modules:
+
+- `modules/13-aws-glue`
+
+Estimated focus areas:
+
+- AWS Glue ETL jobs versus crawlers and notebooks.
+- One Terraform root for many jobs with `for_each`.
+- YAML job catalogs and generated tfvars.
+- Skipping a job in a stage without a second stack.
+- S3 script artifacts versus embedding Spark in HCL.
+- GitHub Environments, OIDC, and branch-to-account mapping.
+- Selective `-target` plans that do not destroy unchanged jobs.
+
+Checkpoint work:
+
+- Generate tfvars for `dev` and `qa` and explain the skip output.
+- Add a job folder without editing `main.tf`.
+- Trace `customer-etl` prod workers and Glue version from YAML.
+- Design separate IAM roles for CI versus Glue runtime.
+- Complete the mini project in `modules/13-aws-glue/exercises/`.
+
+You are ready to advance when:
+
+- You can explain why omitting a job from tfvars destroys it.
+- You know what Terraform should own for Glue and what belongs in Git/S3.
+- You can map four GitHub Environments onto four AWS accounts without
+  hardcoding account IDs in the workflow.
+- You treat Glue worker counts as a cost control, not a default of 10.
+
+---
+
+## Phase 10: Capstone and interview readiness
 
 Primary materials:
 

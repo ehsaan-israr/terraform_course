@@ -1,0 +1,5 @@
+# Local example only. CI passes these via GitHub environment variables.
+environment       = "dev"
+glue_role_arn     = "arn:aws:iam::111111111111:role/glue-execution-role-dev"
+scripts_s3_bucket = "acme-glue-scripts-dev"
+aws_region        = "us-east-1"

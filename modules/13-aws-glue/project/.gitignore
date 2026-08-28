@@ -1,0 +1,21 @@
+# Generated Terraform variable files
+gluejobs/terraform/generated/
+
+# Terraform
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/tfplan
+**/*.tfvars
+!**/*.tfvars.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

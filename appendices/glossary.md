@@ -36,6 +36,8 @@
 
 **GitOps**: Workflow where Git pull requests drive infrastructure changes through automated plan, review, and apply stages.
 
+**Glue job**: AWS managed Spark ETL job. In this course, Terraform owns the job resource; YAML and Python scripts live in Git and are uploaded to S3.
+
 **Guardrail**: Preventive or detective control that constrains allowed infrastructure behavior, often from Control Tower, SCPs, or policy as code.
 
 **HCL**: HashiCorp Configuration Language, the syntax used by Terraform and many Terraform-compatible workflows.
