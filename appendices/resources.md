@@ -39,9 +39,11 @@ Use these resources as references while building the course projects. Prefer off
 - Terraform `aws_glue_job`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_job
 - GitHub OIDC with AWS: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
 - AWS EKS: https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html
+- EKS IRSA: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
 - Terraform `aws_eks_cluster`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster
 - GitHub reusable workflows: https://docs.github.com/en/actions/using-workflows/reusing-workflows
 - AWS ECS: https://docs.aws.amazon.com/ecs/
+- ECS task IAM roles: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
 - AWS ECR: https://docs.aws.amazon.com/ecr/
 - AWS RDS: https://docs.aws.amazon.com/rds/
 - Amazon ElastiCache: https://docs.aws.amazon.com/elasticache/

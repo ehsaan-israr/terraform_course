@@ -299,7 +299,8 @@ Pitfalls:
 ### ECS
 
 ECS is AWS's managed container orchestrator. Fargate removes the need to manage
-EC2 worker nodes.
+EC2 worker nodes. This section is the overview; the dedicated lesson is
+[Module 13](../13-aws-ecs/).
 
 ```hcl
 resource "aws_ecs_cluster" "main" {
@@ -335,7 +336,9 @@ Pitfalls:
 
 ### EKS overview
 
-EKS runs Kubernetes control planes managed by AWS.
+EKS runs Kubernetes control planes managed by AWS. Dedicated coverage is
+[Module 14](../14-aws-eks/). This section is only the decision, not the
+implementation.
 
 Use EKS when:
 

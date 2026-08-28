@@ -1,6 +1,8 @@
-# Module 14 project — GitHub Actions CI/CD for EKS and Terraform
+# Module 14 optional lab — GitHub Actions CI/CD for EKS and Terraform
 
-Hands-on lab for [Module 14](../README.md): a multi-service monorepo with reusable GitHub Actions, OIDC to AWS, Terraform per environment, and EKS deploys.
+Optional delivery lab for [Module 14](../README.md). Learn the **cluster** first
+in [`../project/`](../project/). This directory is a multi-service monorepo with
+reusable GitHub Actions, OIDC to AWS, Terraform per environment, and EKS deploys.
 
 Treat this `project/` directory as the Git repository root when you copy it into a dedicated repo. Workflows and path filters assume `services/`, `infra/terraform/`, and `.github/` sit at that root.
 

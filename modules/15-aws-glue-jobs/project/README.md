@@ -1,6 +1,6 @@
-# Module 13 project — config-driven AWS Glue jobs
+# Module 15 project — config-driven AWS Glue jobs
 
-Hands-on lab for [Module 13](../README.md): YAML-defined Glue jobs, one Terraform stack with `for_each`, and GitHub Actions CI/CD using OIDC.
+Hands-on lab for [Module 15](../README.md) Part 2: YAML-defined Glue jobs, one Terraform stack with `for_each`, and GitHub Actions CI/CD using OIDC. Read Part 1 of the module README before this lab if Glue jobs are new to you.
 
 Treat this `project/` directory as the Git repository root when you copy it into a dedicated Glue repo. Workflow paths and Python helpers assume `gluejobs/` and `.github/workflows/` sit at that root.
 

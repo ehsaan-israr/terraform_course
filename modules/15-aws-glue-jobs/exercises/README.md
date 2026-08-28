@@ -1,7 +1,18 @@
-# Module 13 Exercises — AWS Glue Jobs
+# Module 15 Exercises — AWS Glue Jobs
 
-Use the project in `../project`. You can complete exercises 1–3 without AWS.
-Exercises 4–5 need a sandbox account if you want a real plan.
+Part 0 is Glue fundamentals (README Part 1). Parts 1–5 use the project in
+`../project`. You can complete 0–3 without AWS. Exercises 4–5 need a sandbox
+account if you want a real plan.
+
+## Exercise 0: One job vs many
+
+From README Part 1, write down:
+
+- What Terraform owns for a Glue job.
+- What should stay in Git and be uploaded to S3.
+- Why a crawler is optional on day one.
+
+Success criteria: you can sketch a single `aws_glue_job` without opening Part 2.
 
 ## Exercise 1: Trace a job into Terraform
 

@@ -1,6 +1,14 @@
-# Module 13 Solutions — AWS Glue Jobs
+# Module 15 Solutions — AWS Glue Jobs
 
 These answers correspond to `../exercises/README.md` and use `../project`.
+
+## Exercise 0: One job vs many
+
+- Terraform: job name, role ARN, Glue version, workers, timeout, tags, script
+  S3 URI, default arguments.
+- Git + CI upload: Spark/Python script files. Do not embed them as HCL heredocs.
+- Crawlers infer schema. Many teams define Catalog tables (or skip the Catalog)
+  and start with jobs only.
 
 ## Exercise 1: Trace a job into Terraform
 

@@ -144,11 +144,12 @@ Estimated focus areas:
 - VPC design.
 - Public, private app, and private data subnets.
 - Security groups and routing.
-- ALB and ECS.
+- ALB and ECS (overview; dedicated ECS is Module 13).
 - RDS.
 - Redis.
 - CloudWatch logs and alarms.
 - Production defaults.
+- Pointer: after Module 12, Modules 13–15 go deep on ECS, EKS, and Glue.
 
 Checkpoint work:
 
@@ -306,15 +307,79 @@ You are ready to advance when:
 
 ---
 
-## Phase 9: AWS Glue jobs
+## Phase 9: AWS ECS
 
 Primary modules:
 
-- `modules/13-aws-glue`
+- `modules/13-aws-ecs`
 
 Estimated focus areas:
 
-- AWS Glue ETL jobs versus crawlers and notebooks.
+- Cluster, task definition, and service.
+- Fargate vs EC2 launch type.
+- Task execution role vs task role.
+- ALB with `target_type = ip`.
+- Private tasks, NAT, and VPC endpoints.
+- Circuit breakers and autoscaling.
+- When ECS is a better default than EKS.
+
+Checkpoint work:
+
+- Trace `execution_role_arn` and `task_role_arn` in the project.
+- Explain the lab public-IP shortcut vs production private tasks.
+- Add CPU target-tracking autoscaling in a plan-only change.
+- Answer why Fargate target groups must use IP targets.
+
+You are ready to advance when:
+
+- You can draw ALB → Fargate task → logs without notes.
+- You refuse to put application S3 permissions on the execution role.
+- You know why `:latest` and missing egress both look like "Terraform is broken."
+- You can explain ECS vs EKS as an operational choice, not a fashion choice.
+
+---
+
+## Phase 10: AWS EKS
+
+Primary modules:
+
+- `modules/14-aws-eks`
+
+Estimated focus areas:
+
+- Control plane vs node groups / Fargate / Karpenter.
+- Cluster IAM, node IAM, and IRSA.
+- Kubernetes subnet tags and pod IP capacity.
+- Access entries vs `aws-auth`.
+- What Terraform owns vs kubectl/CI.
+- Optional: GitHub Actions monorepo lab in `project-cicd/`.
+
+Checkpoint work:
+
+- Plan `modules/14-aws-eks/project` without applying.
+- List what is missing when `enable_node_group = false`.
+- Compare `project/` to the `project-cicd/` VPC/EKS skeleton.
+- If you do the CI/CD lab: trace a Flask-only PR through `ci.yml`.
+
+You are ready to advance when:
+
+- You can explain IRSA as the EKS analogue of an ECS task role.
+- You will not apply an EKS control plane and forget it over a weekend.
+- You split cluster state from application Deployments.
+- You can choose ECS (Module 13) when Kubernetes is not a requirement.
+
+---
+
+## Phase 11: AWS Glue jobs
+
+Primary modules:
+
+- `modules/15-aws-glue-jobs`
+
+Estimated focus areas:
+
+- AWS Glue ETL jobs versus crawlers and the Data Catalog.
+- A single `aws_glue_job` before the many-job pattern.
 - One Terraform root for many jobs with `for_each`.
 - YAML job catalogs and generated tfvars.
 - Skipping a job in a stage without a second stack.
@@ -324,11 +389,12 @@ Estimated focus areas:
 
 Checkpoint work:
 
+- Explain one Glue job in HCL without opening the YAML lab.
 - Generate tfvars for `dev` and `qa` and explain the skip output.
 - Add a job folder without editing `main.tf`.
 - Trace `customer-etl` prod workers and Glue version from YAML.
 - Design separate IAM roles for CI versus Glue runtime.
-- Complete the mini project in `modules/13-aws-glue/exercises/`.
+- Complete the mini project in `modules/15-aws-glue-jobs/exercises/`.
 
 You are ready to advance when:
 
@@ -340,39 +406,7 @@ You are ready to advance when:
 
 ---
 
-## Phase 10: GitHub Actions CI/CD for EKS
-
-Primary modules:
-
-- `modules/14-eks-cicd`
-
-Estimated focus areas:
-
-- Monorepo path filters.
-- Reusable GitHub Actions workflows and composite actions.
-- OIDC from GitHub Environments into AWS.
-- Directory-per-environment Terraform for EKS.
-- Branch and tag promotion (`develop`, `release/*`, `v*.*.*`).
-- Separating cluster Terraform from application image rollouts.
-
-Checkpoint work:
-
-- Trace a Flask-only PR through `ci.yml`.
-- Map git refs to GitHub Environments.
-- Explain why dev and prod must not share one state file.
-- List missing EKS resources in the teaching skeleton before pods can run.
-- Complete the exercises in `modules/14-eks-cicd/exercises/`.
-
-You are ready to advance when:
-
-- You can design CI vs CD without copying YAML per service.
-- You refuse long-lived AWS keys in GitHub.
-- You can explain what Terraform should own on EKS versus what kubectl should own.
-- You treat EKS control-plane cost as a reason to prefer plan-only labs.
-
----
-
-## Phase 11: Capstone and interview readiness
+## Phase 12: Capstone and interview readiness
 
 Primary materials:
 

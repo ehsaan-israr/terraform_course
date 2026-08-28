@@ -202,20 +202,26 @@ Use this as a fast review sheet. Strong answers connect Terraform mechanics to p
 60. **How do you migrate from a monolithic Terraform codebase to modules?**
     Identify stable patterns, extract modules one at a time, use moved blocks or state moves, preserve behavior, and test plans in lower environments before production.
 
-61. **What should Terraform own for AWS Glue jobs?**
+61. **What is the difference between an ECS task execution role and a task role?**
+    The execution role is for the platform: pull images, write logs, inject secrets. The task role is for application code calling AWS APIs.
+
+62. **Why must a Fargate ALB target group use `target_type = ip`?**
+    Fargate uses `awsvpc`. The load balancer registers the task ENI address, not an EC2 instance ID.
+
+63. **What should Terraform own for AWS Glue jobs?**
     The job resource: name, role, Glue version, workers, timeout, tags, and the S3 URI of the script. Keep Spark code and per-job YAML in Git; upload scripts in CI.
 
-62. **Why generate a full job map if CI only changed one Glue job?**
+64. **Why generate a full job map if CI only changed one Glue job?**
     Terraform destroys resources missing from configuration. Full tfvars plus `-target` updates one job without deleting the others.
 
-63. **How do you deploy Glue to four AWS accounts from one workflow file?**
+65. **How do you deploy Glue to four AWS accounts from one workflow file?**
     GitHub Environments inject per-stage `AWS_ROLE_ARN` and variables. The workflow stays generic; OIDC assumes the environment's role.
 
-64. **How should a monorepo CI decide what to run?**
+66. **How should a monorepo CI decide what to run?**
     Path filters. A Flask change should not rebuild Go images or plan every Terraform root unless those paths changed.
 
-65. **What does Terraform own on EKS vs the deploy pipeline?**
+67. **What does Terraform own on EKS vs the deploy pipeline?**
     Terraform: cluster, VPC/nodes, IAM/IRSA, add-ons. Pipeline: image build, ECR push, rolling the Deployment to a new tag.
 
-66. **Why bind GitHub OIDC trust to an environment name?**
+68. **Why bind GitHub OIDC trust to an environment name?**
     So the prod role cannot be assumed from a `develop` workflow run. Stolen workflow YAML still cannot use the prod role without matching `environment:prod`.
