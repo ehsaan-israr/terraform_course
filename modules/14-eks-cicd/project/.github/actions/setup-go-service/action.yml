@@ -1,0 +1,25 @@
+name: Setup Go Service
+description: Install Go toolchain and cache modules for a monorepo service
+
+inputs:
+  service-path:
+    description: Path to the Go service directory
+    required: true
+  go-version:
+    description: Go version to use
+    required: false
+    default: "1.22"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache-dependency-path: ${{ inputs.service-path }}/go.sum
+
+    - name: Download modules
+      shell: bash
+      working-directory: ${{ inputs.service-path }}
+      run: go mod download

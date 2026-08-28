@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      flask-api: ${{ steps.filter.outputs.flask-api }}
+      fastapi-api: ${{ steps.filter.outputs.fastapi-api }}
+      go-api: ${{ steps.filter.outputs.go-api }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Path filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            flask-api:
+              - 'services/flask-api/**'
+            fastapi-api:
+              - 'services/fastapi-api/**'
+            go-api:
+              - 'services/go-api/**'
+            terraform:
+              - 'infra/terraform/**'
+
+  flask-api:
+    needs: changes
+    if: needs.changes.outputs.flask-api == 'true'
+    uses: ./.github/workflows/reusable-python-ci.yml
+    with:
+      service-name: flask-api
+      service-path: services/flask-api
+
+  fastapi-api:
+    needs: changes
+    if: needs.changes.outputs.fastapi-api == 'true'
+    uses: ./.github/workflows/reusable-python-ci.yml
+    with:
+      service-name: fastapi-api
+      service-path: services/fastapi-api
+
+  go-api:
+    needs: changes
+    if: needs.changes.outputs.go-api == 'true'
+    uses: ./.github/workflows/reusable-go-ci.yml
+    with:
+      service-name: go-api
+      service-path: services/go-api
+
+  terraform-plan-dev:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true' && github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: dev
+      working-directory: infra/terraform/environments/dev
+      terraform-action: plan
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_DEV }}
+
+  terraform-plan-qa:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true' && github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: qa
+      working-directory: infra/terraform/environments/qa
+      terraform-action: plan
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_QA }}
+
+  terraform-plan-prod:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true' && github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: prod
+      working-directory: infra/terraform/environments/prod
+      terraform-action: plan
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_PROD }}
+
+  terraform-plan-iaas:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true' && github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: iaas
+      working-directory: infra/terraform/environments/iaas
+      terraform-action: plan
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_IAAS }}

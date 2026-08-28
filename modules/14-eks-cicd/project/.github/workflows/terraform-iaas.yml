@@ -1,0 +1,45 @@
+name: Terraform IaaS
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/terraform/**'
+      - '.github/workflows/terraform-iaas.yml'
+      - '.github/workflows/reusable-terraform.yml'
+      - '.github/actions/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/terraform/environments/iaas/**'
+      - 'infra/terraform/modules/**'
+      - '.github/workflows/terraform-iaas.yml'
+  workflow_dispatch:
+    inputs:
+      terraform-action:
+        description: plan or apply
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+        default: plan
+
+concurrency:
+  group: terraform-iaas-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform:
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: iaas
+      working-directory: infra/terraform/environments/iaas
+      terraform-action: ${{ github.event_name == 'pull_request' && 'plan' || (inputs.terraform-action || 'apply') }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_IAAS }}

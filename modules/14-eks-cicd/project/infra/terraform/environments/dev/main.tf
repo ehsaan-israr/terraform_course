@@ -1,0 +1,32 @@
+locals {
+  environment = "dev"
+  name_prefix = "monorepo-${local.environment}"
+  common_tags = {
+    Environment = local.environment
+    ManagedBy   = "terraform"
+    Repository  = "terraform-course"
+  }
+}
+
+module "vpc" {
+  source = "../../modules/vpc"
+
+  name_prefix = local.name_prefix
+  tags        = local.common_tags
+}
+
+module "eks" {
+  source = "../../modules/eks"
+
+  cluster_name = "${local.name_prefix}-eks"
+  subnet_ids   = module.vpc.private_subnet_ids
+  tags         = local.common_tags
+}
+
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "eks_cluster_name" {
+  value = module.eks.cluster_name
+}

@@ -1,0 +1,86 @@
+name: Reusable Terraform
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment (dev, qa, prod, iaas)
+        required: true
+        type: string
+      working-directory:
+        description: Terraform root module directory
+        required: true
+        type: string
+      terraform-action:
+        description: plan or apply
+        required: true
+        type: string
+      terraform-version:
+        description: Terraform version
+        required: false
+        type: string
+        default: "1.10.3"
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+jobs:
+  terraform:
+    name: ${{ inputs.terraform-action }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: ./.github/actions/configure-aws
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
+        with:
+          terraform-version: ${{ inputs.terraform-version }}
+          working-directory: ${{ inputs.working-directory }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        if: inputs.terraform-action == 'plan'
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Comment plan on PR
+        if: inputs.terraform-action == 'plan' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('${{ inputs.working-directory }}/plan.txt', 'utf8');
+            const body = `### Terraform Plan (${{ inputs.environment }})\n\n\`\`\`hcl\n${plan.slice(0, 60000)}\n\`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Terraform apply
+        if: inputs.terraform-action == 'apply'
+        run: terraform apply -input=false -auto-approve

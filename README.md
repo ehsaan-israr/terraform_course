@@ -17,6 +17,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | Modules 7–9 | Multi-env repos, security hardening, Terratest + CI validation |
 | Modules 10–12 | Refactoring, GitOps ecosystem, multi-account landing zone |
 | Module 13 | Config-driven AWS Glue jobs, YAML → Terraform, OIDC CI |
+| Module 14 | Monorepo GitHub Actions, EKS deploys, Terraform per env |
 | Capstone | CloudFront → ALB → ECS → RDS/Redis/S3 with CI, scanning, DR docs |
 
 ---
@@ -40,6 +41,8 @@ A complete, project-based course that takes a backend engineer from **first Terr
                                  ▼
                          13 AWS Glue Jobs
                                  ▼
+                    14 GitHub Actions + EKS
+                                 ▼
                          Final Capstone
 ```
 
@@ -58,6 +61,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | [11](modules/11-ecosystem/) | Terraform Ecosystem | Terragrunt + GitOps workflow |
 | [12](modules/12-enterprise/) | Enterprise Architecture | Multi-account landing zone |
 | [13](modules/13-aws-glue/) | AWS Glue Jobs | YAML-driven Glue jobs + OIDC CI |
+| [14](modules/14-eks-cicd/) | GitHub Actions + EKS | Monorepo CI/CD, Terraform, EKS rollouts |
 | [Capstone](capstone/) | Production Platform | Full CloudFront/ALB/ECS stack |
 
 ---
@@ -112,7 +116,8 @@ Every major topic aims to cover:
 3. **Production habits** — Modules 7–9. Repo layout, least privilege, automated validation.
 4. **Scale** — Modules 10–12. Refactoring, tooling choices, multi-account design.
 5. **Data platform** — Module 13. Config-driven Glue jobs and environment-mapped CI.
-6. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
+6. **Delivery** — Module 14. Monorepo GitHub Actions, OIDC, Terraform roots, EKS deploys.
+7. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
 
 ### Daily workflow for each module
 

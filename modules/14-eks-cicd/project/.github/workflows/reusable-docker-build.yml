@@ -1,0 +1,51 @@
+name: Reusable Docker Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment (dev, qa, prod)
+        required: true
+        type: string
+      service-name:
+        description: Service identifier and ECR repository name
+        required: true
+        type: string
+      service-path:
+        description: Path to the service directory
+        required: true
+        type: string
+      image-tag:
+        description: Image tag to publish
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+jobs:
+  build:
+    name: ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: ./.github/actions/configure-aws
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Build and push
+        uses: ./.github/actions/docker-build-push
+        with:
+          service-name: ${{ inputs.service-name }}
+          service-path: ${{ inputs.service-path }}
+          ecr-registry: ${{ vars.ECR_REGISTRY }}
+          image-tag: ${{ inputs.image-tag }}
+          aws-region: ${{ vars.AWS_REGION }}
