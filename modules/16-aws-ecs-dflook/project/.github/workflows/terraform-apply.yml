@@ -1,0 +1,48 @@
+name: terraform-apply
+
+# Apply the plan humans reviewed on the merged pull request.
+# dflook re-runs Terraform and refuses to apply if that plan is no longer
+# accurate (output failure_reason=plan-changed). Git history is not the diff.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  AWS_REGION: us-east-1
+
+jobs:
+  apply:
+    name: terraform apply (ecs-dev)
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform apply
+        id: apply
+        uses: dflook/terraform-apply@v2
+        with:
+          path: terraform
+          label: ecs-dev
+          var_file: terraform/terraform.tfvars.example
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/dev/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true

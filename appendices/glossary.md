@@ -28,7 +28,9 @@
 
 **EKS**: Amazon Elastic Kubernetes Service. AWS manages the Kubernetes control plane. You manage VPC, nodes or Fargate, IRSA, add-ons, and workloads. Module 14 teaches the cluster; `project-cicd/` is an optional GitHub Actions lab.
 
-**ECS**: Amazon Elastic Container Service. Cluster + task definition + service. Fargate is the course default. Module 13 is the dedicated lesson; later modules reuse the pattern.
+**ECS**: Amazon Elastic Container Service. Cluster + task definition + service. Fargate is the course default. Module 13 is the dedicated lesson; Module 16 delivers the same stack with dflook Actions.
+
+**dflook Terraform GitHub Actions**: Suite (`terraform-plan`, `terraform-apply`, `terraform-check`, and others) that runs Terraform in GitHub Actions. The plan is the infrastructure diff (posted on the PR). Apply fails if that plan is no longer accurate. Do not substitute `git diff`.
 
 **ElastiCache Redis**: AWS managed Redis-compatible service commonly used for cache, sessions, and rate-limiting state.
 

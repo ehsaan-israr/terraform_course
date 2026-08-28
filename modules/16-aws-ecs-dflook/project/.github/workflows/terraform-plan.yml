@@ -1,0 +1,52 @@
+name: terraform-plan
+
+# The infrastructure diff is terraform plan (config + state + AWS APIs).
+# This workflow does not use git diff / paths filters to decide whether ECS
+# changed. A README-only commit can still produce "No changes" from Terraform;
+# a zero-HCL-change commit can still produce a plan if state drifted.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  AWS_REGION: us-east-1
+
+jobs:
+  plan:
+    name: terraform plan (ecs-dev)
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform plan
+        id: plan
+        uses: dflook/terraform-plan@v2
+        with:
+          path: terraform
+          label: ecs-dev
+          var_file: terraform/terraform.tfvars.example
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/dev/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: Terraform change summary
+        run: |
+          echo "Terraform reported changes=${{ steps.plan.outputs.changes }}"
+          echo "to_add=${{ steps.plan.outputs.to_add }} to_change=${{ steps.plan.outputs.to_change }} to_destroy=${{ steps.plan.outputs.to_destroy }}"

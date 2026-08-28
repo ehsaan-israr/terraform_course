@@ -1,0 +1,8 @@
+# Copy to backend.hcl (do not commit real bucket names).
+# dflook workflows pass this file as backend_config_file.
+
+bucket         = "REPLACE_ME-tfstate"
+key            = "ecs-dflook/dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "REPLACE_ME-tflock"
+encrypt        = true

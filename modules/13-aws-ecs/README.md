@@ -8,9 +8,10 @@ deployments — without hunting through Module 05, 06, 12, or the capstone.
 Read this README first. Then complete the project and exercises.
 
 **Prerequisites:** Modules 04–06 (remote state, modules, VPC/ALB basics).
-**Next:** [Module 14 AWS EKS](../14-aws-eks/) if you need Kubernetes; otherwise
-continue the core path. Glue is a separate data-plane topic in
-[Module 15](../15-aws-glue-jobs/).
+**Next:** [Module 14 AWS EKS](../14-aws-eks/) if you need Kubernetes.
+[Module 16](../16-aws-ecs-dflook/) runs this ECS stack through dflook GitHub
+Actions so **Terraform plan** is the diff, not `git diff`.
+Glue is a separate data-plane topic in [Module 15](../15-aws-glue-jobs/).
 
 ## Learning objectives
 

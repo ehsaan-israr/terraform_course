@@ -1,0 +1,78 @@
+name: terraform-pr-comment
+
+# Optional: humans comment `terraform plan` or `terraform apply` on the PR.
+# Still not a git diff — dflook checks out the PR merge ref and runs Terraform.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  AWS_REGION: us-east-1
+
+jobs:
+  plan:
+    name: terraform plan from comment
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, 'terraform plan') }}
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform plan
+        uses: dflook/terraform-plan@v2
+        with:
+          path: terraform
+          label: ecs-dev
+          var_file: terraform/terraform.tfvars.example
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/dev/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+  apply:
+    name: terraform apply from comment
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, 'terraform apply') }}
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform apply
+        uses: dflook/terraform-apply@v2
+        with:
+          path: terraform
+          label: ecs-dev
+          var_file: terraform/terraform.tfvars.example
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/dev/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true

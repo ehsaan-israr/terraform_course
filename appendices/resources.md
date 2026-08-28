@@ -42,6 +42,10 @@ Use these resources as references while building the course projects. Prefer off
 - EKS IRSA: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
 - Terraform `aws_eks_cluster`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster
 - GitHub reusable workflows: https://docs.github.com/en/actions/using-workflows/reusing-workflows
+- dflook Terraform GitHub Actions: https://github.com/dflook/terraform-github-actions
+- dflook terraform-plan: https://github.com/dflook/terraform-github-actions/tree/main/terraform-plan
+- dflook terraform-apply: https://github.com/dflook/terraform-github-actions/tree/main/terraform-apply
+- dflook terraform-check: https://github.com/dflook/terraform-github-actions/tree/main/terraform-check
 - AWS ECS: https://docs.aws.amazon.com/ecs/
 - ECS task IAM roles: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
 - AWS ECR: https://docs.aws.amazon.com/ecr/

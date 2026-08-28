@@ -225,3 +225,12 @@ Use this as a fast review sheet. Strong answers connect Terraform mechanics to p
 
 68. **Why bind GitHub OIDC trust to an environment name?**
     So the prod role cannot be assumed from a `develop` workflow run. Stolen workflow YAML still cannot use the prod role without matching `environment:prod`.
+
+69. **Why is `git diff` the wrong infrastructure diff?**
+    Git shows which files changed. Terraform plan shows how config, state, and AWS APIs disagree. Drift and data-source changes can produce a plan with no useful git diff.
+
+70. **What does dflook `terraform-apply` do with the PR comment?**
+    It plans again and applies only if that plan matches the reviewed comment. If AWS or config moved, it fails with `plan-changed` instead of applying a surprise.
+
+71. **When should Terraform CI skip path filters?**
+    When the job's job is to ask Terraform whether infrastructure changed. Path filters may still skip *application* builds. Pair filtered Terraform jobs with scheduled `terraform-check`.

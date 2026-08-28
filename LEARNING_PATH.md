@@ -406,7 +406,38 @@ You are ready to advance when:
 
 ---
 
-## Phase 12: Capstone and interview readiness
+## Phase 12: ECS with dflook Terraform GitHub Actions
+
+Primary modules:
+
+- `modules/16-aws-ecs-dflook`
+
+Estimated focus areas:
+
+- Git diff vs `terraform plan` as an infrastructure diff.
+- dflook `terraform-plan` PR comments.
+- dflook `terraform-apply` matching the reviewed plan (`plan-changed`).
+- Scheduled `terraform-check` for drift.
+- OIDC into AWS; GitHub Environments.
+- Why path filters must not replace Terraform.
+
+Checkpoint work:
+
+- List a case where Git is dirty and the plan is empty, and the reverse.
+- Trace `label: ecs-dev` from plan workflow to apply workflow.
+- Explain why this lab omits `on.pull_request.paths`.
+- Complete the exercises in `modules/16-aws-ecs-dflook/exercises/`.
+
+You are ready to advance when:
+
+- You refuse to skip Terraform because `git diff` ignored `.tf` files.
+- You can explain what dflook compares on apply.
+- You treat `plan-changed` as a safety control.
+- You still use OIDC and remote state; dflook does not replace them.
+
+---
+
+## Phase 13: Capstone and interview readiness
 
 Primary materials:
 
