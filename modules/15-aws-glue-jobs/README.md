@@ -1,8 +1,14 @@
-# Module 13 - AWS Glue Jobs with Terraform
+# Module 15 - AWS Glue Jobs with Terraform
 
-This module applies production Terraform habits to **AWS Glue**: config-driven
-jobs, one state file per environment, scripts stored in S3, and GitOps CI that
-plans every account on a pull request.
+This module is the dedicated **AWS Glue** lesson. Glue is not ECS and not EKS.
+It is managed Spark ETL: jobs, a Data Catalog, IAM, and scripts in S3.
+
+Read **Part 1** until one `aws_glue_job` makes sense. Then **Part 2** shows how
+teams run *many* jobs without copy-pasting Terraform — YAML, `for_each`, and
+GitHub OIDC. That lab lives in `project/`.
+
+**Prerequisites:** Modules 04–05 (state, `for_each`, IAM policy documents).
+Containers (Modules 13–14) are optional here.
 
 You do not need to become a Spark expert. You need to manage Glue jobs the way
 a platform team would: many jobs, four stages, no copy-pasted Terraform per job,
@@ -12,7 +18,9 @@ and no long-lived AWS keys in GitHub.
 
 By the end of this module you will be able to:
 
-- Explain what an AWS Glue ETL job is and which pieces Terraform should own.
+- Explain Glue jobs, crawlers, and the Data Catalog, and which of those
+  Terraform should own first.
+- Write a single `aws_glue_job` with an IAM role and an S3 script URI.
 - Model many Glue jobs with one `aws_glue_job` resource and `for_each`.
 - Keep per-job runtime config in YAML and generate Terraform variables in CI.
 - Skip a job in a stage without maintaining a second stack.
@@ -20,6 +28,99 @@ By the end of this module you will be able to:
 - Wire GitHub Environments + OIDC so each stage assumes a different AWS role.
 - Use path filters and `-target` so a one-job change does not plan the world.
 - Name cost, IAM, and state pitfalls before they hit production.
+
+## Part 1 — Glue fundamentals
+
+### What Glue is
+
+AWS Glue is a serverless Spark platform for **extract, transform, load (ETL)**.
+
+Typical flow:
+
+```text
+Raw files in S3 (source bucket)
+        |
+        v
+Glue job (Spark, Python shell, or Ray)
+  |-- IAM role (read source, write target, talk to Glue APIs)
+  |-- Script on S3 (your Python / Spark code)
+  `-- Optional: Data Catalog tables, connections, bookmarks
+        |
+        v
+Curated files in S3 (target bucket) or a warehouse
+```
+
+| Piece | What it is | Terraform first? |
+| --- | --- | --- |
+| **Job** | Scheduled or triggered Spark run | Yes — `aws_glue_job` |
+| **IAM role** | What the job may read/write | Often a shared IAM stack; pass the ARN |
+| **Script** | `main.py` / Spark code | No — keep files in Git; upload to S3 in CI |
+| **Data Catalog** | Hive-style databases/tables | Maybe — start later |
+| **Crawler** | Infers schema from S3 | Optional; many teams skip crawlers and define tables |
+| **Trigger / workflow** | When jobs run | Optional; EventBridge or orchestrators are common |
+
+Start with **one job + one role + one script URI**. Catalogs and crawlers are
+easier after that.
+
+### One job in Terraform
+
+```hcl
+resource "aws_iam_role" "glue" {
+  name               = "glue-etl"
+  assume_role_policy = data.aws_iam_policy_document.glue_assume.json
+}
+
+resource "aws_glue_job" "orders" {
+  name         = "dev-orders-etl"
+  role_arn     = aws_iam_role.glue.arn
+  glue_version = "4.0"
+  worker_type  = "G.1X"
+  number_of_workers = 2
+  timeout      = 60
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://acme-glue-scripts-dev/orders-etl/scripts/main.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-language"          = "python"
+    "--enable-metrics"        = "true"
+    "--source-bucket"         = "acme-raw-dev"
+    "--target-bucket"         = "acme-curated-dev"
+  }
+}
+```
+
+The Glue service principal must be able to assume the role
+(`glue.amazonaws.com`). The role needs S3 on the script and data buckets, and
+Glue/CloudWatch permissions. `AWSGlueServiceRole` is a starting point; tighten
+it for production.
+
+**Cost:** Glue bills DPU-hours (workers × runtime). `G.1X` with 10 workers on
+a job you forgot to stop is an expensive lab. Keep worker counts small and
+destroy jobs after class.
+
+### What Terraform should not store
+
+- The Spark script body (unreviewable heredocs, no real Git history for data
+  engineers).
+- Per-environment bucket names copied into four nearly identical `main.tf`
+  files — use variables or generated tfvars (Part 2).
+- Long-lived AWS access keys for CI.
+
+### From one job to many
+
+Copy-pasting `aws_glue_job` twenty times fails the same way copy-pasted ECS
+services fail: drift, missed tags, and painful reviews.
+
+Part 2 uses **one resource** with `for_each = var.glue_jobs`, and YAML files
+that data engineers own. Adding a job means adding a folder, not editing HCL.
+
+---
+
+## Part 2 — Config-driven jobs and GitOps
 
 ## Why Glue belongs in a Terraform course
 
@@ -156,7 +257,7 @@ plan.
 
 ## Local loop (no apply required)
 
-From `modules/13-aws-glue/project`:
+From `modules/15-aws-glue-jobs/project`:
 
 ```bash
 pip install -r gluejobs/scripts/requirements.txt

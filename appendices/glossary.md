@@ -26,7 +26,9 @@
 
 **DynamoDB locking**: Common AWS state-locking mechanism used with an S3 backend to prevent concurrent state writes.
 
-**EKS**: Amazon Elastic Kubernetes Service. In this course, Terraform owns the cluster skeleton; GitHub Actions builds images and rolls Deployments.
+**EKS**: Amazon Elastic Kubernetes Service. AWS manages the Kubernetes control plane. You manage VPC, nodes or Fargate, IRSA, add-ons, and workloads. Module 14 teaches the cluster; `project-cicd/` is an optional GitHub Actions lab.
+
+**ECS**: Amazon Elastic Container Service. Cluster + task definition + service. Fargate is the course default. Module 13 is the dedicated lesson; later modules reuse the pattern.
 
 **ElastiCache Redis**: AWS managed Redis-compatible service commonly used for cache, sessions, and rate-limiting state.
 
@@ -38,7 +40,9 @@
 
 **GitOps**: Workflow where Git pull requests drive infrastructure changes through automated plan, review, and apply stages.
 
-**Glue job**: AWS managed Spark ETL job. In this course, Terraform owns the job resource; YAML and Python scripts live in Git and are uploaded to S3.
+**IRSA**: IAM Roles for Service Accounts on EKS. A pod's service account assumes an IAM role through the cluster OIDC provider. Analogue of an ECS task role.
+
+**Glue job**: AWS managed Spark ETL job. Terraform owns the job resource; YAML and Python scripts live in Git and are uploaded to S3.
 
 **Guardrail**: Preventive or detective control that constrains allowed infrastructure behavior, often from Control Tower, SCPs, or policy as code.
 

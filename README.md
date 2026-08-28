@@ -16,8 +16,9 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | Modules 4–6 | Remote state, reusable modules, production-shaped AWS platform |
 | Modules 7–9 | Multi-env repos, security hardening, Terratest + CI validation |
 | Modules 10–12 | Refactoring, GitOps ecosystem, multi-account landing zone |
-| Module 13 | Config-driven AWS Glue jobs, YAML → Terraform, OIDC CI |
-| Module 14 | Monorepo GitHub Actions, EKS deploys, Terraform per env |
+| Module 13 | ECS: cluster, task definition, service, IAM, ALB |
+| Module 14 | EKS: control plane, nodes, IRSA; optional GitHub Actions lab |
+| Module 15 | Glue jobs: one job, then YAML → Terraform and OIDC CI |
 | Capstone | CloudFront → ALB → ECS → RDS/Redis/S3 with CI, scanning, DR docs |
 
 ---
@@ -39,9 +40,11 @@ A complete, project-based course that takes a backend engineer from **first Terr
                                  ▼
               10 Advanced ──► 11 Ecosystem ──► 12 Enterprise
                                  ▼
-                         13 AWS Glue Jobs
+                         13 AWS ECS
                                  ▼
-                    14 GitHub Actions + EKS
+                         14 AWS EKS
+                                 ▼
+                      15 AWS Glue Jobs
                                  ▼
                          Final Capstone
 ```
@@ -60,15 +63,16 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | [10](modules/10-advanced/) | Advanced Terraform | Monolith → modules migration |
 | [11](modules/11-ecosystem/) | Terraform Ecosystem | Terragrunt + GitOps workflow |
 | [12](modules/12-enterprise/) | Enterprise Architecture | Multi-account landing zone |
-| [13](modules/13-aws-glue/) | AWS Glue Jobs | YAML-driven Glue jobs + OIDC CI |
-| [14](modules/14-eks-cicd/) | GitHub Actions + EKS | Monorepo CI/CD, Terraform, EKS rollouts |
+| [13](modules/13-aws-ecs/) | AWS ECS | ALB → Fargate service |
+| [14](modules/14-aws-eks/) | AWS EKS | Cluster + IRSA (optional CI/CD lab) |
+| [15](modules/15-aws-glue-jobs/) | AWS Glue Jobs | One job, then YAML-driven jobs + OIDC CI |
 | [Capstone](capstone/) | Production Platform | Full CloudFront/ALB/ECS stack |
 
 ---
 
 ## Prerequisites
 
-- AWS account with IAM permissions to create VPC, EC2, S3, IAM, RDS, and (for Module 13) Glue jobs (use a sandbox account)
+- AWS account with IAM permissions to create VPC, EC2, S3, IAM, RDS, and (for later modules) ECS, EKS, and Glue jobs (use a sandbox account)
 - AWS CLI configured (`aws configure` or SSO)
 - Terraform **1.5+** ([install guide](https://developer.hashicorp.com/terraform/install))
 - Git, a code editor, and comfort with a Linux shell
@@ -76,7 +80,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 
 ### Cost warning
 
-Several projects create **billable** AWS resources (NAT Gateway, RDS, ALB, ECS, ElastiCache). Prefer `t3.micro` / Fargate small sizes, destroy when done, and keep work in a dedicated sandbox account with billing alarms.
+Several projects create **billable** AWS resources (NAT Gateway, RDS, ALB, ECS, EKS control plane, Glue DPUs, ElastiCache). Prefer `t3.micro` / Fargate small sizes, destroy when done, and keep work in a dedicated sandbox account with billing alarms.
 
 ---
 
@@ -115,8 +119,8 @@ Every major topic aims to cover:
 2. **Core platform skills** — Modules 4–6. Remote state first; then modules; then AWS composition.
 3. **Production habits** — Modules 7–9. Repo layout, least privilege, automated validation.
 4. **Scale** — Modules 10–12. Refactoring, tooling choices, multi-account design.
-5. **Data platform** — Module 13. Config-driven Glue jobs and environment-mapped CI.
-6. **Delivery** — Module 14. Monorepo GitHub Actions, OIDC, Terraform roots, EKS deploys.
+5. **Containers** — Modules 13–14. Dedicated ECS, then EKS (optional GitHub Actions lab).
+6. **Data platform** — Module 15. Glue jobs from one resource to YAML-driven CI.
 7. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
 
 ### Daily workflow for each module
@@ -149,7 +153,7 @@ terraform destroy
 .
 ├── README.md                 # You are here
 ├── LEARNING_PATH.md          # Detailed path + checkpoints
-├── modules/                  # Lessons 01–12
+├── modules/                  # Lessons 01–15
 ├── capstone/                 # Final production platform
 ├── appendices/
 │   ├── cheatsheet.md
