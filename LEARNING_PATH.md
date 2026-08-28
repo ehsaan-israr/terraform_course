@@ -406,7 +406,7 @@ You are ready to advance when:
 
 ---
 
-## Phase 12: ECS with dflook Terraform GitHub Actions
+## Phase 12: ECS with dflook Terraform GitHub Actions and workspaces
 
 Primary modules:
 
@@ -418,14 +418,18 @@ Estimated focus areas:
 - dflook `terraform-plan` PR comments.
 - dflook `terraform-apply` matching the reviewed plan (`plan-changed`).
 - Scheduled `terraform-check` for drift.
-- OIDC into AWS; GitHub Environments.
+- Terraform workspaces (`dev` / `staging` / `prod`) instead of tfvars.
+- One S3 backend key; named workspaces under `env:/<workspace>/`.
+- OIDC into AWS; GitHub Environment name equals the workspace.
 - Why path filters must not replace Terraform.
+- When workspaces are OK here vs directory-per-env in Module 07.
 
 Checkpoint work:
 
 - List a case where Git is dirty and the plan is empty, and the reverse.
-- Trace `label: ecs-dev` from plan workflow to apply workflow.
-- Explain why this lab omits `on.pull_request.paths`.
+- Trace `label: ecs-${{ matrix.workspace }}` from plan workflow to apply workflow.
+- Explain why this lab omits `on.pull_request.paths` and `var_file`.
+- Point to `workspaces.tf` as the env switch, not `dev.tfvars`.
 - Complete the exercises in `modules/16-aws-ecs-dflook/exercises/`.
 
 You are ready to advance when:
@@ -433,6 +437,8 @@ You are ready to advance when:
 - You refuse to skip Terraform because `git diff` ignored `.tf` files.
 - You can explain what dflook compares on apply.
 - You treat `plan-changed` as a safety control.
+- You select env with `terraform.workspace`, not tfvars.
+- You never apply the `default` workspace.
 - You still use OIDC and remote state; dflook does not replace them.
 
 ---

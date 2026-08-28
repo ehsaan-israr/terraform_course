@@ -49,7 +49,7 @@ resource "aws_ecs_service" "app" {
   name            = local.resource_name
   cluster         = aws_ecs_cluster.app.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = var.ecs_desired_count
+  desired_count   = local.settings.ecs_desired_count
   launch_type     = "FARGATE"
 
   deployment_circuit_breaker {
@@ -60,7 +60,7 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets          = local.task_subnet_ids
     security_groups  = [aws_security_group.app.id]
-    assign_public_ip = var.assign_public_ip
+    assign_public_ip = local.settings.assign_public_ip
   }
 
   load_balancer {

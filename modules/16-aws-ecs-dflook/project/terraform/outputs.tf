@@ -43,7 +43,12 @@ output "log_group_name" {
   value       = aws_cloudwatch_log_group.app.name
 }
 
+output "workspace" {
+  description = "Terraform workspace used for this plan (dev, staging, or prod)."
+  value       = terraform.workspace
+}
+
 output "lab_networking_note" {
-  description = "Reminder of the lab vs production networking tradeoff."
-  value       = var.assign_public_ip ? "Tasks use public subnets and public IPs so the lab works without NAT. Set assign_public_ip=false and enable_nat_gateway=true (or add VPC endpoints) for the production pattern." : "Tasks use private subnets. Confirm NAT or VPC endpoints exist before expecting image pulls to succeed."
+  description = "Reminder of the lab vs production networking tradeoff for this workspace."
+  value       = local.settings.assign_public_ip ? "Workspace ${terraform.workspace}: tasks use public subnets and public IPs (lab shortcut, no NAT)." : "Workspace ${terraform.workspace}: tasks use private subnets. NAT or VPC endpoints are required to pull images."
 }

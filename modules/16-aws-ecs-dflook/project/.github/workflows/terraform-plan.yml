@@ -1,9 +1,7 @@
 name: terraform-plan
 
-# The infrastructure diff is terraform plan (config + state + AWS APIs).
-# This workflow does not use git diff / paths filters to decide whether ECS
-# changed. A README-only commit can still produce "No changes" from Terraform;
-# a zero-HCL-change commit can still produce a plan if state drifted.
+# Infrastructure diff = terraform plan in each workspace (not git diff, not tfvars).
+# One root, three workspaces: dev, staging, prod.
 
 on:
   pull_request:
@@ -19,9 +17,13 @@ env:
 
 jobs:
   plan:
-    name: terraform plan (ecs-dev)
+    name: terraform plan (${{ matrix.workspace }})
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,21 +34,33 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Ensure Terraform workspace exists
+        uses: dflook/terraform-new-workspace@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
       - name: terraform plan
         id: plan
         uses: dflook/terraform-plan@v2
         with:
           path: terraform
-          label: ecs-dev
-          var_file: terraform/terraform.tfvars.example
+          workspace: ${{ matrix.workspace }}
+          label: ecs-${{ matrix.workspace }}
           backend_config: |
             bucket=${{ vars.TF_STATE_BUCKET }}
-            key=ecs-dflook/dev/terraform.tfstate
+            key=ecs-dflook/terraform.tfstate
             region=${{ env.AWS_REGION }}
             dynamodb_table=${{ vars.TF_LOCK_TABLE }}
             encrypt=true
 
       - name: Terraform change summary
         run: |
-          echo "Terraform reported changes=${{ steps.plan.outputs.changes }}"
+          echo "workspace=${{ matrix.workspace }} changes=${{ steps.plan.outputs.changes }}"
           echo "to_add=${{ steps.plan.outputs.to_add }} to_change=${{ steps.plan.outputs.to_change }} to_destroy=${{ steps.plan.outputs.to_destroy }}"

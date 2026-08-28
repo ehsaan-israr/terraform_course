@@ -19,7 +19,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | Module 13 | ECS: cluster, task definition, service, IAM, ALB |
 | Module 14 | EKS: control plane, nodes, IRSA; optional GitHub Actions lab |
 | Module 15 | Glue jobs: one job, then YAML → Terraform and OIDC CI |
-| Module 16 | ECS + dflook Actions: Terraform plan is the diff, not git diff |
+| Module 16 | ECS + dflook + workspaces: plan is the diff; env via terraform.workspace, not tfvars |
 | Capstone | CloudFront → ALB → ECS → RDS/Redis/S3 with CI, scanning, DR docs |
 
 ---
@@ -47,7 +47,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
                                  ▼
                       15 AWS Glue Jobs
                                  ▼
-                   16 ECS + dflook Actions
+              16 ECS + dflook + workspaces
                                  ▼
                          Final Capstone
 ```
@@ -69,7 +69,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | [13](modules/13-aws-ecs/) | AWS ECS | ALB → Fargate service |
 | [14](modules/14-aws-eks/) | AWS EKS | Cluster + IRSA (optional CI/CD lab) |
 | [15](modules/15-aws-glue-jobs/) | AWS Glue Jobs | One job, then YAML-driven jobs + OIDC CI |
-| [16](modules/16-aws-ecs-dflook/) | AWS ECS + dflook | ECS stack; Terraform plan PR comments, not git diff |
+| [16](modules/16-aws-ecs-dflook/) | AWS ECS + dflook + workspaces | ECS stack; workspaces not tfvars; Terraform plan PR comments |
 | [Capstone](capstone/) | Production Platform | Full CloudFront/ALB/ECS stack |
 
 ---
@@ -125,7 +125,7 @@ Every major topic aims to cover:
 4. **Scale** — Modules 10–12. Refactoring, tooling choices, multi-account design.
 5. **Containers** — Modules 13–14. Dedicated ECS, then EKS (optional GitHub Actions lab).
 6. **Data platform** — Module 15. Glue jobs from one resource to YAML-driven CI.
-7. **Terraform-native CI** — Module 16. dflook Actions: plan comments, apply the reviewed plan, drift checks (no git diff).
+7. **Terraform-native CI** — Module 16. dflook Actions + Terraform workspaces (`dev`/`staging`/`prod`, not tfvars): plan comments, apply the reviewed plan, drift checks (no git diff).
 8. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
 
 ### Daily workflow for each module

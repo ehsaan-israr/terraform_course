@@ -121,6 +121,7 @@ Workspace guidance:
 - They can work for simple dev/test duplication.
 - Many production teams prefer separate root modules and state keys for dev, staging, and production.
 - Avoid using workspaces to hide major account or security differences.
+- Module 16 uses workspaces (not tfvars) for one ECS root with dflook `workspace:`. One backend key; never apply `default`.
 
 ## Import blocks
 

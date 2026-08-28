@@ -10,7 +10,8 @@ Read this README first. Then complete the project and exercises.
 **Prerequisites:** Modules 04–06 (remote state, modules, VPC/ALB basics).
 **Next:** [Module 14 AWS EKS](../14-aws-eks/) if you need Kubernetes.
 [Module 16](../16-aws-ecs-dflook/) runs this ECS stack through dflook GitHub
-Actions so **Terraform plan** is the diff, not `git diff`.
+Actions so **Terraform plan** is the diff, not `git diff`, and selects
+**dev / staging / prod with Terraform workspaces**, not tfvars.
 Glue is a separate data-plane topic in [Module 15](../15-aws-glue-jobs/).
 
 ## Learning objectives

@@ -1,26 +1,30 @@
-# Module 16 project — ECS + dflook Terraform Actions
+# Module 16 project — ECS + dflook + Terraform workspaces
 
 Hands-on lab for [Module 16](../README.md). Copy this `project/` directory to
 its own Git repository so `.github/workflows/` and `terraform/` are at the
 root.
 
 **Learning goals:** Terraform plan is the infrastructure diff; dflook posts that
-plan on the PR and apply refuses `plan-changed`. Do not use `git diff` to decide
-whether ECS changed.
-
-ECS resources match [Module 13](../../13-aws-ecs/) with `ecs_desired_count = 0`
-by default.
+plan on the PR and apply refuses `plan-changed`. Environments are **Terraform
+workspaces** (`dev` / `staging` / `prod`), not tfvars files. Do not use
+`git diff` to decide whether ECS changed.
 
 ---
 
 ## Architecture
 
 ```text
-Pull request  --> dflook/terraform-plan  --> PR comment (Terraform diff)
-Merge to main --> dflook/terraform-apply --> apply if plan still matches
-Schedule      --> dflook/terraform-check --> fail on drift (even if Git is clean)
+Pull request  --> matrix workspace=dev|staging|prod
+              --> dflook/terraform-new-workspace
+              --> dflook/terraform-plan  label=ecs-<workspace>
+              --> PR comment per workspace (Terraform diff)
 
-AWS: ALB --> ECS Fargate (desired count 0 by default)
+Merge to main --> same matrix, terraform-apply if the comment still matches
+Schedule      --> terraform-check per workspace (even if Git is clean)
+
+AWS per workspace: ALB --> ECS Fargate
+  dev/staging: desired count 0, public tasks, no NAT
+  prod:        desired count 1, private tasks + NAT
 ```
 
 ---
@@ -29,26 +33,29 @@ AWS: ALB --> ECS Fargate (desired count 0 by default)
 
 | Path | Purpose |
 |------|---------|
-| `terraform/*.tf` | ECS Fargate root: VPC, ALB, cluster, service, IAM, logs. |
+| `terraform/*.tf` | One ECS Fargate root: VPC, ALB, cluster, service, IAM, logs. |
+| `terraform/workspaces.tf` | Env map keyed by `terraform.workspace`. **No tfvars.** |
 | `terraform/versions.tf` | `required_version`, AWS provider, **partial** `backend "s3" {}`. |
-| `terraform/terraform.tfvars.example` | Safe defaults used by CI (`var_file`). |
-| `terraform/backend.hcl.example` | Local backend override template. |
+| `terraform/backend.hcl.example` | Local backend override. **One** state key for all workspaces. |
 | `.github/workflows/lint.yml` | `dflook/terraform-fmt-check`. |
-| `.github/workflows/terraform-plan.yml` | PR plan + comment. **No `paths:` git filter.** |
-| `.github/workflows/terraform-apply.yml` | Apply reviewed plan on `main`. |
-| `.github/workflows/terraform-drift.yml` | Scheduled `terraform-check`. |
-| `.github/workflows/terraform-pr-comment.yml` | `terraform plan` / `terraform apply` comments. |
+| `.github/workflows/terraform-plan.yml` | PR plan matrix. **No `paths:` git filter. No `var_file`.** |
+| `.github/workflows/terraform-apply.yml` | Apply reviewed plan per workspace on `main`. |
+| `.github/workflows/terraform-drift.yml` | Scheduled `terraform-check` per workspace. |
+| `.github/workflows/terraform-pr-comment.yml` | `terraform plan` all workspaces; `terraform apply <name>` one. |
 
 ---
 
 ## GitHub setup
 
-1. Create Environment `dev`.
-2. Secret `AWS_ROLE_ARN` — OIDC role for plan/apply.
-3. Variables `TF_STATE_BUCKET` and `TF_LOCK_TABLE`.
+1. Create GitHub Environments named `dev`, `staging`, and `prod` (same strings
+   as the Terraform workspaces).
+2. Secret `AWS_ROLE_ARN` on each environment — OIDC role for that workspace.
+   Prod can require reviewers. Trust `repo:ORG/REPO:environment:prod` for prod.
+3. Variables `TF_STATE_BUCKET` and `TF_LOCK_TABLE` on each environment (same
+   bucket; workspaces isolate state under `env:/<workspace>/...`).
 4. Permissions: `id-token: write`, `contents: read`, `pull-requests: write`.
 5. Branch protection on `main`: reviews, dismiss stale approvals, require the
-   plan job, require up to date.
+   plan jobs, require up to date.
 
 Workflows assume this directory is the repository root.
 
@@ -58,18 +65,23 @@ Workflows assume this directory is the repository root.
 
 ```bash
 cd terraform
-cp terraform.tfvars.example terraform.tfvars
 terraform init -backend=false
+terraform workspace new dev        # once
+terraform workspace select dev
 terraform fmt
 terraform validate
+# terraform plan   # needs AWS + backend.hcl; the default workspace is rejected
 ```
 
+There is no `terraform.tfvars`. Change CIDR or desired count in `workspaces.tf`.
 `terraform plan` against the CI backend needs AWS credentials and a real
-bucket/table from `backend.hcl.example`.
+bucket/table from `backend.hcl.example`. Keep the backend **key** as
+`ecs-dflook/terraform.tfstate` — do not add `/dev`.
 
 ---
 
 ## Cost warning
 
-Apply creates a billable ALB even when `ecs_desired_count = 0`. Prefer plan-only
-in class. Destroy when finished.
+Apply creates a billable ALB even when desired count is 0. `prod` also creates
+a NAT gateway. Prefer plan-only in class. Destroy when finished. Never apply
+the `default` workspace.

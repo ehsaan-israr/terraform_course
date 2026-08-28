@@ -234,3 +234,12 @@ Use this as a fast review sheet. Strong answers connect Terraform mechanics to p
 
 71. **When should Terraform CI skip path filters?**
     When the job's job is to ask Terraform whether infrastructure changed. Path filters may still skip *application* builds. Pair filtered Terraform jobs with scheduled `terraform-check`.
+
+72. **Why use Terraform workspaces instead of tfvars for Module 16?**
+    One root, three environments that differ only in numbers (CIDR, desired count, NAT). `terraform.workspace` is the switch; dflook has a first-class `workspace:` input. No `dev.tfvars` / `prod.tfvars`.
+
+73. **Why keep one S3 backend key when using workspaces?**
+    Named workspaces already live under `env:/<workspace>/<key>`. Putting `/dev` in the key is the old directory/tfvars pattern and double-namespaces state.
+
+74. **When are workspaces the wrong env boundary?**
+    Separate AWS accounts, different approval chains, or stacks that are not the same root. Module 07 prefers directory-per-environment for those cases. Never apply the `default` workspace.

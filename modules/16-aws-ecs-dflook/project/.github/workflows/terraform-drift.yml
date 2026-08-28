@@ -1,8 +1,6 @@
 name: terraform-drift
 
-# Drift is a Terraform question: does remote state still match config + AWS?
-# git diff against main cannot see console clicks, failed applies, or
-# data-source changes.
+# Drift per workspace. Git cannot see console edits; terraform-check can.
 
 on:
   schedule:
@@ -18,9 +16,13 @@ env:
 
 jobs:
   check:
-    name: terraform check (ecs-dev)
+    name: terraform check (${{ matrix.workspace }})
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,10 +40,10 @@ jobs:
         uses: dflook/terraform-check@v2
         with:
           path: terraform
-          var_file: terraform/terraform.tfvars.example
+          workspace: ${{ matrix.workspace }}
           backend_config: |
             bucket=${{ vars.TF_STATE_BUCKET }}
-            key=ecs-dflook/dev/terraform.tfstate
+            key=ecs-dflook/terraform.tfstate
             region=${{ env.AWS_REGION }}
             dynamodb_table=${{ vars.TF_LOCK_TABLE }}
             encrypt=true
@@ -49,5 +51,5 @@ jobs:
       - name: Drift detected
         if: ${{ failure() && steps.check.outputs.failure_reason == 'changes-to-apply' }}
         run: |
-          echo "Terraform plan is not empty. Investigate console drift or a missed apply."
+          echo "Workspace ${{ matrix.workspace }}: Terraform plan is not empty."
           exit 1

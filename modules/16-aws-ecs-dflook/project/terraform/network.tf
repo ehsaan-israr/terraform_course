@@ -1,34 +1,13 @@
-locals {
-  resource_name = "${var.name}-${var.environment}"
-
-  common_tags = merge(var.tags, {
-    Environment = var.environment
-    ManagedBy   = "terraform"
-    Module      = "16-aws-ecs-dflook"
-  })
-
-  public_subnets = {
-    for index, cidr in var.public_subnet_cidrs :
-    var.availability_zones[index] => cidr
-  }
-
-  private_subnets = {
-    for index, cidr in var.private_subnet_cidrs :
-    var.availability_zones[index] => cidr
-  }
-
-  # Lab shortcut: public subnets + public IP. Production: private subnets + NAT/endpoints.
-  task_subnet_ids = var.assign_public_ip ? [for subnet in aws_subnet.public : subnet.id] : [for subnet in aws_subnet.private : subnet.id]
-}
-
 resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr_block
+  cidr_block           = local.settings.vpc_cidr_block
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = merge(local.common_tags, {
     Name = local.resource_name
   })
+
+  depends_on = [terraform_data.workspace_guard]
 }
 
 resource "aws_internet_gateway" "main" {
@@ -88,7 +67,7 @@ resource "aws_route_table_association" "public" {
 
 # Cost note: NAT gateways have hourly and data processing charges.
 resource "aws_eip" "nat" {
-  count = var.enable_nat_gateway ? 1 : 0
+  count = local.settings.enable_nat_gateway ? 1 : 0
 
   domain = "vpc"
 
@@ -98,7 +77,7 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  count = var.enable_nat_gateway ? 1 : 0
+  count = local.settings.enable_nat_gateway ? 1 : 0
 
   allocation_id = aws_eip.nat[0].id
   subnet_id     = values(aws_subnet.public)[0].id
@@ -114,7 +93,7 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
   dynamic "route" {
-    for_each = var.enable_nat_gateway ? [1] : []
+    for_each = local.settings.enable_nat_gateway ? [1] : []
 
     content {
       cidr_block     = "0.0.0.0/0"

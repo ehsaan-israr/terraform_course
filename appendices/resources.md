@@ -46,6 +46,8 @@ Use these resources as references while building the course projects. Prefer off
 - dflook terraform-plan: https://github.com/dflook/terraform-github-actions/tree/main/terraform-plan
 - dflook terraform-apply: https://github.com/dflook/terraform-github-actions/tree/main/terraform-apply
 - dflook terraform-check: https://github.com/dflook/terraform-github-actions/tree/main/terraform-check
+- dflook terraform-new-workspace: https://github.com/dflook/terraform-github-actions/tree/main/terraform-new-workspace
+- Terraform workspaces: https://developer.hashicorp.com/terraform/language/state/workspaces
 - AWS ECS: https://docs.aws.amazon.com/ecs/
 - ECS task IAM roles: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
 - AWS ECR: https://docs.aws.amazon.com/ecr/
