@@ -26,6 +26,8 @@
 
 **DynamoDB locking**: Common AWS state-locking mechanism used with an S3 backend to prevent concurrent state writes.
 
+**EKS**: Amazon Elastic Kubernetes Service. In this course, Terraform owns the cluster skeleton; GitHub Actions builds images and rolls Deployments.
+
 **ElastiCache Redis**: AWS managed Redis-compatible service commonly used for cache, sessions, and rate-limiting state.
 
 **Execution role**: IAM role assumed by Terraform automation to manage resources in a target account.

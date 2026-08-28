@@ -1,0 +1,61 @@
+name: Reusable EKS Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment (dev, qa, prod)
+        required: true
+        type: string
+      service-name:
+        description: Service identifier
+        required: true
+        type: string
+      deployment-name:
+        description: Kubernetes deployment name
+        required: true
+        type: string
+      container-name:
+        description: Container name in the deployment
+        required: true
+        type: string
+      image-tag:
+        description: Image tag to deploy
+        required: true
+        type: string
+      namespace:
+        description: Kubernetes namespace override
+        required: false
+        type: string
+        default: ""
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+jobs:
+  deploy:
+    name: ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: ./.github/actions/configure-aws
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Deploy to EKS
+        uses: ./.github/actions/deploy-eks
+        with:
+          cluster-name: ${{ vars.EKS_CLUSTER_NAME }}
+          aws-region: ${{ vars.AWS_REGION }}
+          namespace: ${{ inputs.namespace != '' && inputs.namespace || vars.K8S_NAMESPACE }}
+          deployment-name: ${{ inputs.deployment-name }}
+          container-name: ${{ inputs.container-name }}
+          image: ${{ vars.ECR_REGISTRY }}/${{ inputs.service-name }}:${{ inputs.image-tag }}

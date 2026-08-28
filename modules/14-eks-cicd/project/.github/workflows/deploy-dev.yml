@@ -1,0 +1,83 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'services/**'
+      - '.github/workflows/deploy-dev.yml'
+      - '.github/workflows/reusable-*.yml'
+      - '.github/actions/**'
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: Image tag override (defaults to commit SHA)
+        required: false
+        type: string
+      deploy-flask-api:
+        description: Deploy flask-api
+        required: false
+        type: boolean
+        default: true
+      deploy-fastapi-api:
+        description: Deploy fastapi-api
+        required: false
+        type: boolean
+        default: true
+      deploy-go-api:
+        description: Deploy go-api
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  changes:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      flask-api: ${{ steps.filter.outputs.flask-api }}
+      fastapi-api: ${{ steps.filter.outputs.fastapi-api }}
+      go-api: ${{ steps.filter.outputs.go-api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            flask-api:
+              - 'services/flask-api/**'
+            fastapi-api:
+              - 'services/fastapi-api/**'
+            go-api:
+              - 'services/go-api/**'
+
+  release:
+    needs: [changes]
+    if: always() && (needs.changes.result == 'success' || needs.changes.result == 'skipped')
+    uses: ./.github/workflows/reusable-release.yml
+    with:
+      environment: dev
+      image-tag: ${{ inputs.image-tag || github.sha }}
+      deploy-flask-api: ${{ github.event_name != 'workflow_dispatch' && (needs.changes.outputs.flask-api == 'true' || needs.changes.result == 'skipped') || inputs.deploy-flask-api }}
+      deploy-fastapi-api: ${{ github.event_name != 'workflow_dispatch' && (needs.changes.outputs.fastapi-api == 'true' || needs.changes.result == 'skipped') || inputs.deploy-fastapi-api }}
+      deploy-go-api: ${{ github.event_name != 'workflow_dispatch' && (needs.changes.outputs.go-api == 'true' || needs.changes.result == 'skipped') || inputs.deploy-go-api }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_DEV }}
+
+  terraform-apply:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: dev
+      working-directory: infra/terraform/environments/dev
+      terraform-action: apply
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_DEV }}

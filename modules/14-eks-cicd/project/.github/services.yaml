@@ -1,0 +1,26 @@
+services:
+  flask-api:
+    path: services/flask-api
+    language: python
+    framework: flask
+    port: 5000
+    ecr_repository: flask-api
+    k8s_deployment: flask-api
+    k8s_container: flask-api
+
+  fastapi-api:
+    path: services/fastapi-api
+    language: python
+    framework: fastapi
+    port: 8000
+    ecr_repository: fastapi-api
+    k8s_deployment: fastapi-api
+    k8s_container: fastapi-api
+
+  go-api:
+    path: services/go-api
+    language: go
+    port: 8080
+    ecr_repository: go-api
+    k8s_deployment: go-api
+    k8s_container: go-api

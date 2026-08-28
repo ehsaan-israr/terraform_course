@@ -1,0 +1,104 @@
+name: Reusable Release Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: string
+      image-tag:
+        description: Image tag to build and deploy
+        required: true
+        type: string
+      deploy-flask-api:
+        description: Deploy flask-api
+        required: false
+        type: boolean
+        default: true
+      deploy-fastapi-api:
+        description: Deploy fastapi-api
+        required: false
+        type: boolean
+        default: true
+      deploy-go-api:
+        description: Deploy go-api
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+
+jobs:
+  build-flask-api:
+    if: inputs.deploy-flask-api
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: flask-api
+      service-path: services/flask-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  build-fastapi-api:
+    if: inputs.deploy-fastapi-api
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: fastapi-api
+      service-path: services/fastapi-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  build-go-api:
+    if: inputs.deploy-go-api
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: go-api
+      service-path: services/go-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  deploy-flask-api:
+    needs: build-flask-api
+    if: inputs.deploy-flask-api
+    uses: ./.github/workflows/reusable-eks-deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: flask-api
+      deployment-name: flask-api
+      container-name: flask-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  deploy-fastapi-api:
+    needs: build-fastapi-api
+    if: inputs.deploy-fastapi-api
+    uses: ./.github/workflows/reusable-eks-deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: fastapi-api
+      deployment-name: fastapi-api
+      container-name: fastapi-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  deploy-go-api:
+    needs: build-go-api
+    if: inputs.deploy-go-api
+    uses: ./.github/workflows/reusable-eks-deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service-name: go-api
+      deployment-name: go-api
+      container-name: go-api
+      image-tag: ${{ inputs.image-tag }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}

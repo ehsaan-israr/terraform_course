@@ -210,3 +210,12 @@ Use this as a fast review sheet. Strong answers connect Terraform mechanics to p
 
 63. **How do you deploy Glue to four AWS accounts from one workflow file?**
     GitHub Environments inject per-stage `AWS_ROLE_ARN` and variables. The workflow stays generic; OIDC assumes the environment's role.
+
+64. **How should a monorepo CI decide what to run?**
+    Path filters. A Flask change should not rebuild Go images or plan every Terraform root unless those paths changed.
+
+65. **What does Terraform own on EKS vs the deploy pipeline?**
+    Terraform: cluster, VPC/nodes, IAM/IRSA, add-ons. Pipeline: image build, ECR push, rolling the Deployment to a new tag.
+
+66. **Why bind GitHub OIDC trust to an environment name?**
+    So the prod role cannot be assumed from a `develop` workflow run. Stolen workflow YAML still cannot use the prod role without matching `environment:prod`.

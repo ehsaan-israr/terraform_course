@@ -340,7 +340,39 @@ You are ready to advance when:
 
 ---
 
-## Phase 10: Capstone and interview readiness
+## Phase 10: GitHub Actions CI/CD for EKS
+
+Primary modules:
+
+- `modules/14-eks-cicd`
+
+Estimated focus areas:
+
+- Monorepo path filters.
+- Reusable GitHub Actions workflows and composite actions.
+- OIDC from GitHub Environments into AWS.
+- Directory-per-environment Terraform for EKS.
+- Branch and tag promotion (`develop`, `release/*`, `v*.*.*`).
+- Separating cluster Terraform from application image rollouts.
+
+Checkpoint work:
+
+- Trace a Flask-only PR through `ci.yml`.
+- Map git refs to GitHub Environments.
+- Explain why dev and prod must not share one state file.
+- List missing EKS resources in the teaching skeleton before pods can run.
+- Complete the exercises in `modules/14-eks-cicd/exercises/`.
+
+You are ready to advance when:
+
+- You can design CI vs CD without copying YAML per service.
+- You refuse long-lived AWS keys in GitHub.
+- You can explain what Terraform should own on EKS versus what kubectl should own.
+- You treat EKS control-plane cost as a reason to prefer plan-only labs.
+
+---
+
+## Phase 11: Capstone and interview readiness
 
 Primary materials:
 

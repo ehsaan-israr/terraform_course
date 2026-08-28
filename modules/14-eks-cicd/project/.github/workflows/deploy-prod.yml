@@ -1,0 +1,61 @@
+name: Deploy Prod
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: Image tag to deploy (required for manual runs)
+        required: true
+        type: string
+      deploy-flask-api:
+        description: Deploy flask-api
+        required: false
+        type: boolean
+        default: true
+      deploy-fastapi-api:
+        description: Deploy fastapi-api
+        required: false
+        type: boolean
+        default: true
+      deploy-go-api:
+        description: Deploy go-api
+        required: false
+        type: boolean
+        default: true
+      run-terraform:
+        description: Apply Terraform for production
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  release:
+    uses: ./.github/workflows/reusable-release.yml
+    with:
+      environment: prod
+      image-tag: ${{ inputs.image-tag || github.ref_name }}
+      deploy-flask-api: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy-flask-api }}
+      deploy-fastapi-api: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy-fastapi-api }}
+      deploy-go-api: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy-go-api }}
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_PROD }}
+
+  terraform-apply:
+    if: github.event_name == 'workflow_dispatch' && inputs.run-terraform
+    uses: ./.github/workflows/reusable-terraform.yml
+    with:
+      environment: prod
+      working-directory: infra/terraform/environments/prod
+      terraform-action: apply
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_PROD }}
