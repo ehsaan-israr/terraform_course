@@ -28,7 +28,9 @@
 
 **EKS**: Amazon Elastic Kubernetes Service. AWS manages the Kubernetes control plane. You manage VPC, nodes or Fargate, IRSA, add-ons, and workloads. Module 14 teaches the cluster; `project-cicd/` is an optional GitHub Actions lab.
 
-**ECS**: Amazon Elastic Container Service. Cluster + task definition + service. Fargate is the course default. Module 13 is the dedicated lesson; later modules reuse the pattern.
+**ECS**: Amazon Elastic Container Service. Cluster + task definition + service. Fargate is the course default. Module 13 is the dedicated lesson; Module 16 delivers the same stack with dflook Actions and Terraform workspaces.
+
+**dflook Terraform GitHub Actions**: Suite (`terraform-plan`, `terraform-apply`, `terraform-check`, `terraform-new-workspace`, and others) that runs Terraform in GitHub Actions. The plan is the infrastructure diff (posted on the PR). Apply fails if that plan is no longer accurate. Do not substitute `git diff`. Module 16 passes `workspace:` so each environment is a Terraform workspace, not a tfvars file.
 
 **ElastiCache Redis**: AWS managed Redis-compatible service commonly used for cache, sessions, and rate-limiting state.
 
@@ -106,6 +108,6 @@
 
 **VPC endpoint**: Private connection from a VPC to AWS services without public internet routing.
 
-**Workspace**: Terraform state namespace. Useful in some workflows, but many production teams prefer separate root modules per environment.
+**Workspace**: Terraform state namespace selected with `terraform.workspace`. Module 16 uses workspaces (`dev`/`staging`/`prod`) instead of tfvars for one ECS root; named workspace state lives under `env:/<workspace>/` in S3. Many production teams still prefer separate root modules when accounts differ (Module 07). Never apply the `default` workspace in that lab.
 
 **Zero trust for CI**: Credential model where automation uses short-lived, scoped identities such as OIDC instead of long-lived cloud access keys.

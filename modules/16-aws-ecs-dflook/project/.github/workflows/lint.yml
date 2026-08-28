@@ -1,0 +1,26 @@
+name: lint
+
+# Formatting does not need AWS. Do not use git diff to decide whether HCL is valid —
+# terraform fmt-check inspects the files Terraform will load.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    name: terraform fmt-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: terraform fmt-check
+        uses: dflook/terraform-fmt-check@v2
+        with:
+          path: terraform

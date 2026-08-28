@@ -1,0 +1,13 @@
+# One backend key for all workspaces. Terraform stores named workspace state at
+# env:/<workspace>/<key> in this bucket. Do not put /dev or /prod in the key.
+#
+#   terraform workspace select dev
+#   terraform init -backend-config=backend.hcl
+#
+# Copy to backend.hcl (do not commit real bucket names).
+
+bucket         = "REPLACE_ME-tfstate"
+key            = "ecs-dflook/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "REPLACE_ME-tflock"
+encrypt        = true

@@ -110,6 +110,11 @@ Workspace tradeoffs:
 Production rule of thumb: use directories for long-lived environments and
 workspaces only when the stacks are intentionally identical and disposable.
 
+[Module 16](../16-aws-ecs-dflook/) is the exception used on purpose: one ECS
+root, one account, env-wise numbers in `workspaces.tf`, and dflook's
+`workspace:` input. It still refuses the `default` workspace. Use directories
+again when accounts or approval boundaries differ.
+
 ## Environment separation: Dev, UAT, Prod
 
 Environment separation is both technical and organizational.

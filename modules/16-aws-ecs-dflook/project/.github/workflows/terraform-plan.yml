@@ -1,0 +1,66 @@
+name: terraform-plan
+
+# Infrastructure diff = terraform plan in each workspace (not git diff, not tfvars).
+# One root, three workspaces: dev, staging, prod.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  AWS_REGION: us-east-1
+
+jobs:
+  plan:
+    name: terraform plan (${{ matrix.workspace }})
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure Terraform workspace exists
+        uses: dflook/terraform-new-workspace@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: terraform plan
+        id: plan
+        uses: dflook/terraform-plan@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          label: ecs-${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: Terraform change summary
+        run: |
+          echo "workspace=${{ matrix.workspace }} changes=${{ steps.plan.outputs.changes }}"
+          echo "to_add=${{ steps.plan.outputs.to_add }} to_change=${{ steps.plan.outputs.to_change }} to_destroy=${{ steps.plan.outputs.to_destroy }}"

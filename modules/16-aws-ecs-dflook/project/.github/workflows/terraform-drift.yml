@@ -1,0 +1,55 @@
+name: terraform-drift
+
+# Drift per workspace. Git cannot see console edits; terraform-check can.
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  check:
+    name: terraform check (${{ matrix.workspace }})
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform check
+        id: check
+        uses: dflook/terraform-check@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: Drift detected
+        if: ${{ failure() && steps.check.outputs.failure_reason == 'changes-to-apply' }}
+        run: |
+          echo "Workspace ${{ matrix.workspace }}: Terraform plan is not empty."
+          exit 1

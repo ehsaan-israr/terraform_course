@@ -1,0 +1,110 @@
+name: terraform-pr-comment
+
+# Comment `terraform plan` to plan every workspace.
+# Comment `terraform apply dev` (or staging|prod) to apply that workspace only.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  AWS_REGION: us-east-1
+
+jobs:
+  plan:
+    name: terraform plan ${{ matrix.workspace }} from comment
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, 'terraform plan') }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure Terraform workspace exists
+        uses: dflook/terraform-new-workspace@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: terraform plan
+        uses: dflook/terraform-plan@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          label: ecs-${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+  apply:
+    name: terraform apply ${{ matrix.workspace }} from comment
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, format('terraform apply {0}', matrix.workspace)) }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [dev, staging, prod]
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure Terraform workspace exists
+        uses: dflook/terraform-new-workspace@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
+
+      - name: terraform apply
+        uses: dflook/terraform-apply@v2
+        with:
+          path: terraform
+          workspace: ${{ matrix.workspace }}
+          label: ecs-${{ matrix.workspace }}
+          backend_config: |
+            bucket=${{ vars.TF_STATE_BUCKET }}
+            key=ecs-dflook/terraform.tfstate
+            region=${{ env.AWS_REGION }}
+            dynamodb_table=${{ vars.TF_LOCK_TABLE }}
+            encrypt=true
