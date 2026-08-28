@@ -34,6 +34,10 @@ Use these resources as references while building the course projects. Prefer off
 - AWS Transit Gateway: https://docs.aws.amazon.com/vpc/latest/tgw/
 - AWS PrivateLink and VPC endpoints: https://docs.aws.amazon.com/vpc/latest/privatelink/
 - AWS Route53: https://docs.aws.amazon.com/route53/
+- AWS Glue: https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+- AWS Glue jobs: https://docs.aws.amazon.com/glue/latest/dg/author-job.html
+- Terraform `aws_glue_job`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_job
+- GitHub OIDC with AWS: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
 - AWS ECS: https://docs.aws.amazon.com/ecs/
 - AWS ECR: https://docs.aws.amazon.com/ecr/
 - AWS RDS: https://docs.aws.amazon.com/rds/

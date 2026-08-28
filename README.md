@@ -16,6 +16,7 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | Modules 4–6 | Remote state, reusable modules, production-shaped AWS platform |
 | Modules 7–9 | Multi-env repos, security hardening, Terratest + CI validation |
 | Modules 10–12 | Refactoring, GitOps ecosystem, multi-account landing zone |
+| Module 13 | Config-driven AWS Glue jobs, YAML → Terraform, OIDC CI |
 | Capstone | CloudFront → ALB → ECS → RDS/Redis/S3 with CI, scanning, DR docs |
 
 ---
@@ -37,6 +38,8 @@ A complete, project-based course that takes a backend engineer from **first Terr
                                  ▼
               10 Advanced ──► 11 Ecosystem ──► 12 Enterprise
                                  ▼
+                         13 AWS Glue Jobs
+                                 ▼
                          Final Capstone
 ```
 
@@ -54,13 +57,14 @@ A complete, project-based course that takes a backend engineer from **first Terr
 | [10](modules/10-advanced/) | Advanced Terraform | Monolith → modules migration |
 | [11](modules/11-ecosystem/) | Terraform Ecosystem | Terragrunt + GitOps workflow |
 | [12](modules/12-enterprise/) | Enterprise Architecture | Multi-account landing zone |
+| [13](modules/13-aws-glue/) | AWS Glue Jobs | YAML-driven Glue jobs + OIDC CI |
 | [Capstone](capstone/) | Production Platform | Full CloudFront/ALB/ECS stack |
 
 ---
 
 ## Prerequisites
 
-- AWS account with IAM permissions to create VPC, EC2, S3, IAM, RDS (use a sandbox account)
+- AWS account with IAM permissions to create VPC, EC2, S3, IAM, RDS, and (for Module 13) Glue jobs (use a sandbox account)
 - AWS CLI configured (`aws configure` or SSO)
 - Terraform **1.5+** ([install guide](https://developer.hashicorp.com/terraform/install))
 - Git, a code editor, and comfort with a Linux shell
@@ -107,7 +111,8 @@ Every major topic aims to cover:
 2. **Core platform skills** — Modules 4–6. Remote state first; then modules; then AWS composition.
 3. **Production habits** — Modules 7–9. Repo layout, least privilege, automated validation.
 4. **Scale** — Modules 10–12. Refactoring, tooling choices, multi-account design.
-5. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
+5. **Data platform** — Module 13. Config-driven Glue jobs and environment-mapped CI.
+6. **Prove it** — Capstone. Treat it like a take-home for a platform/DevOps role.
 
 ### Daily workflow for each module
 

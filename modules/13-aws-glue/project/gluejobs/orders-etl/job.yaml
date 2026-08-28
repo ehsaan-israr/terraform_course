@@ -1,0 +1,33 @@
+# Same-arguments pattern: default_arguments only, no per-stage argument overrides
+name: orders-etl
+description: Orders fact table ETL
+
+glue_version: "3.0"
+worker_type: G.1X
+number_of_workers: 5
+timeout: 180
+max_retries: 2
+
+script: scripts/main.py
+
+# Skip this job in QA only (not deployed to qa AWS account)
+skip_stages:
+  - qa
+
+default_arguments:
+  --enable-metrics: ""
+  --job-bookmark-option: job-bookmark-disable
+  --catalog-database: orders
+  --write-mode: append
+
+stages:
+  dev:
+    number_of_workers: 2
+  qa:
+    number_of_workers: 3
+  uat:
+    number_of_workers: 4
+  prod:
+    glue_version: "4.0"
+    worker_type: G.2X
+    number_of_workers: 20

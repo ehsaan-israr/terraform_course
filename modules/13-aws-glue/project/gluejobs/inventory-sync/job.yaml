@@ -1,0 +1,38 @@
+# Stage-only pattern: arguments defined per stage, different Glue versions
+name: inventory-sync
+description: Inventory synchronization from external API
+
+glue_version: "4.0"
+worker_type: Standard
+number_of_workers: 1
+timeout: 60
+max_retries: 0
+
+script: scripts/main.py
+
+stages:
+  dev:
+    glue_version: "3.0"
+    arguments:
+      --env: dev
+      --api-endpoint: https://inventory-dev.internal/api
+      --batch-size: "100"
+
+  qa:
+    skip: true
+
+  uat:
+    glue_version: "4.0"
+    arguments:
+      --env: uat
+      --api-endpoint: https://inventory-uat.internal/api
+      --batch-size: "1000"
+
+  prod:
+    glue_version: "5.0"
+    worker_type: G.1X
+    number_of_workers: 3
+    arguments:
+      --env: prod
+      --api-endpoint: https://inventory.internal/api
+      --batch-size: "5000"

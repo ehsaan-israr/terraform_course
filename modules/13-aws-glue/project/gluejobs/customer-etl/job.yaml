@@ -1,0 +1,45 @@
+# Mix pattern: shared default_arguments + per-stage overrides
+name: customer-etl
+description: Customer dimension ETL pipeline
+
+glue_version: "4.0"
+worker_type: G.1X
+number_of_workers: 2
+timeout: 120
+max_retries: 1
+
+script: scripts/main.py
+
+default_arguments:
+  --enable-metrics: ""
+  --job-bookmark-option: job-bookmark-enable
+  --database: analytics
+
+stages:
+  dev:
+    number_of_workers: 1
+    arguments:
+      --env: dev
+      --source-bucket: acme-data-dev
+      --target-bucket: acme-curated-dev
+
+  qa:
+    arguments:
+      --env: qa
+      --source-bucket: acme-data-qa
+      --target-bucket: acme-curated-qa
+
+  uat:
+    arguments:
+      --env: uat
+      --source-bucket: acme-data-uat
+      --target-bucket: acme-curated-uat
+
+  prod:
+    glue_version: "5.0"
+    worker_type: G.2X
+    number_of_workers: 10
+    arguments:
+      --env: prod
+      --source-bucket: acme-data-prod
+      --target-bucket: acme-curated-prod
